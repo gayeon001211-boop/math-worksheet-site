@@ -1,0 +1,1671 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>학년별 수학 문제집 생성기</title>
+<style>
+:root {
+  --accent: #4f46e5;
+  --accent-dark: #3730a3;
+  --accent-bg: #eef0ff;
+  --bg: #f5f6fb;
+  --card-bg: #ffffff;
+  --text: #1f2333;
+  --text-muted: #6b7280;
+  --border: #e2e4ee;
+  --radius: 12px;
+  transition: color 0.15s ease;
+}
+
+/* 학교급별 테마 색상 */
+body.theme-elementary {
+  --accent: #f97316;
+  --accent-dark: #c2410c;
+  --accent-bg: #fff3e8;
+}
+body.theme-middle {
+  --accent: #2563eb;
+  --accent-dark: #1e40af;
+  --accent-bg: #eaf1ff;
+}
+body.theme-high {
+  --accent: #7c3aed;
+  --accent-dark: #5b21b6;
+  --accent-bg: #f4efff;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.5;
+}
+
+.site-header {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 40px 24px 16px;
+  text-align: center;
+}
+.site-header h1 { font-size: 28px; margin: 0 0 8px; color: var(--accent-dark); }
+.subtitle { color: var(--text-muted); margin: 0; }
+
+main {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 16px 24px 60px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.control-panel {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 24px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 20px;
+  align-items: start;
+  box-shadow: 0 1px 3px rgba(20, 20, 43, 0.04);
+}
+
+.field { display: flex; flex-direction: column; gap: 8px; }
+.field label { font-weight: 600; font-size: 14px; color: var(--text); }
+
+select, input[type="number"] {
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 14px;
+  background: #fff;
+  color: var(--text);
+}
+
+.topic-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 160px;
+  overflow-y: auto;
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #fafbff;
+}
+.topic-item { display: flex; align-items: center; gap: 8px; font-size: 14px; cursor: pointer; }
+.topic-item span { flex: 1; }
+.word-item { border-top: 1px dashed var(--border); padding-top: 6px; margin-top: 2px; font-weight: 600; }
+
+.inline-check { display: flex; align-items: center; gap: 6px; font-weight: 500 !important; font-size: 12px !important; color: var(--text-muted) !important; cursor: pointer; margin-top: -4px; }
+
+.topic-count {
+  width: 52px;
+  padding: 4px 6px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 13px;
+  text-align: center;
+}
+
+.radio-row { display: flex; gap: 16px; font-size: 14px; }
+.radio-row label { display: flex; align-items: center; gap: 6px; cursor: pointer; }
+
+.checkbox-field { grid-column: 1 / -1; flex-direction: row; gap: 24px; flex-wrap: wrap; }
+.checkbox-field label { display: flex; align-items: center; gap: 6px; font-weight: 500; font-size: 14px; cursor: pointer; }
+
+.hint { margin: 0; font-size: 12px; color: var(--text-muted); font-weight: 400; }
+.disabled-field { opacity: 0.55; }
+.exam-only { display: none; }
+body.exam-mode .exam-only { display: inline; }
+
+.button-row { grid-column: 1 / -1; display: flex; gap: 12px; flex-wrap: wrap; }
+
+.btn {
+  padding: 12px 22px;
+  border-radius: 8px;
+  border: none;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.05s ease, opacity 0.15s ease;
+}
+.btn:active { transform: scale(0.98); }
+.btn.primary { background: var(--accent); color: #fff; }
+.btn.primary:hover { background: var(--accent-dark); }
+.btn.secondary { background: #fff; color: var(--accent-dark); border: 1px solid var(--accent); }
+.btn.secondary:hover { background: #eef0ff; }
+.btn.danger { color: #b91c1c; border-color: #f3b4b4; }
+.btn.danger:hover { background: #fef2f2; }
+.btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+.panel-section {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px 24px;
+  box-shadow: 0 1px 3px rgba(20, 20, 43, 0.04);
+}
+.saved-row, .page-row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.saved-row select { flex: 1; min-width: 220px; }
+.page-row input[type="number"] { width: 90px; }
+
+.empty-state {
+  background: var(--card-bg);
+  border: 1px dashed var(--border);
+  border-radius: var(--radius);
+  padding: 40px;
+  text-align: center;
+  color: var(--text-muted);
+}
+
+.hidden { display: none !important; }
+
+.worksheet-section { display: flex; flex-direction: column; gap: 24px; }
+
+.sheet {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 32px;
+  box-shadow: 0 1px 3px rgba(20, 20, 43, 0.04);
+}
+
+.cover-page {
+  position: relative;
+  overflow: hidden;
+  min-height: 620px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 6px;
+  padding: 64px 32px;
+}
+.cover-band { position: absolute; top: 0; left: 0; right: 0; height: 14px; background: var(--accent); }
+.cover-badge {
+  display: inline-block;
+  padding: 7px 20px;
+  border-radius: 999px;
+  background: var(--accent-bg);
+  color: var(--accent-dark);
+  font-weight: 700;
+  font-size: 13px;
+  letter-spacing: 2px;
+  margin-bottom: 18px;
+}
+.cover-title { font-size: 38px; margin: 0 0 10px; color: var(--accent-dark); line-height: 1.3; }
+.cover-subtitle { color: var(--text-muted); font-size: 14px; max-width: 620px; }
+.cover-divider { width: 70px; height: 4px; background: var(--accent); border-radius: 2px; margin: 32px 0; }
+.cover-student {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 26px 56px;
+  width: 100%;
+  max-width: 480px;
+}
+.cover-field { text-align: left; }
+.cover-field span { display: block; font-size: 12px; color: var(--text-muted); margin-bottom: 8px; font-weight: 600; }
+.cover-field i { display: block; height: 1px; background: var(--text); font-style: normal; }
+.cover-footer { margin-top: 48px; font-size: 12px; color: var(--text-muted); }
+
+#worksheetTitle { margin: 0 0 12px; font-size: 22px; color: var(--accent-dark); }
+
+.meta-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  border-bottom: 2px solid var(--text);
+  padding-bottom: 16px;
+  margin-bottom: 24px;
+}
+.meta-text { margin: 0; color: var(--text-muted); font-size: 14px; }
+.student-info { display: flex; gap: 20px; font-size: 14px; flex-wrap: wrap; }
+
+.problem-page + .problem-page { margin-top: 32px; padding-top: 24px; border-top: 1px dashed var(--border); }
+
+.problem-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 44px 22px;
+}
+.problem-wide { grid-column: span 2; }
+
+.problem {
+  display: flex;
+  gap: 8px;
+  font-size: 15px;
+  padding: 16px 4px;
+  border-bottom: 1px dotted var(--border);
+}
+.problem .num { font-weight: 700; color: var(--accent-dark); min-width: 22px; }
+.qtext { flex: 1; line-height: 1.7; }
+
+.qblock { flex: 1; display: flex; flex-direction: column; gap: 10px; }
+
+.choices { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 0.95em; }
+.choice { white-space: nowrap; }
+
+.essay-tag { font-size: 12px; color: var(--text-muted); font-weight: 400; margin-left: 4px; }
+.essay-lines {
+  height: 82px;
+  background-image: repeating-linear-gradient(to bottom, transparent, transparent 26px, var(--border) 27px);
+}
+
+.type-ratio-row { display: flex; gap: 20px; flex-wrap: wrap; font-size: 14px; align-items: center; }
+.type-ratio-row input[type="number"] { width: 64px; margin: 0 4px; }
+
+body.font-large .problem { font-size: 19px; padding: 20px 4px; }
+body.font-large .qtext { line-height: 1.8; }
+body.font-large .problem-grid { grid-template-columns: repeat(2, 1fr); }
+body.font-xlarge .problem { font-size: 24px; padding: 24px 4px; }
+body.font-xlarge .qtext { line-height: 1.9; }
+body.font-xlarge .problem-grid { grid-template-columns: 1fr; }
+
+.frac {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  vertical-align: middle;
+  font-size: 0.9em;
+  line-height: 1.1;
+  margin: 0 2px;
+}
+.frac .num { border-bottom: 1.4px solid currentColor; padding: 0 3px; min-width: unset; color: inherit; font-weight: inherit; }
+.frac .den { padding: 0 3px; }
+
+.answer-sheet {
+  margin-top: 8px;
+  display: none;
+}
+body.show-answers-preview .answer-sheet { display: block; }
+.answer-sheet h3 { margin: 0 0 16px; color: var(--accent-dark); }
+
+.answer-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 10px 16px;
+}
+.ans-item { font-size: 14px; color: var(--text); }
+.ans-item b { color: var(--accent-dark); margin-right: 4px; }
+
+.site-footer {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 0 24px 40px;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+@media (max-width: 900px) {
+  .problem-grid { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 480px) {
+  .problem-grid { grid-template-columns: 1fr; }
+  .problem-wide { grid-column: span 1; }
+}
+
+@media print {
+  body { background: #fff; }
+  .no-print { display: none !important; }
+  main { padding: 0; max-width: none; }
+  .sheet { border: none; box-shadow: none; padding: 0; border-radius: 0; }
+  .empty-state { display: none !important; }
+  .worksheet-section { gap: 0; }
+  .cover-page { page-break-after: always; min-height: 90vh; }
+  .answer-sheet {
+    display: block;
+    page-break-before: always;
+  }
+  body:not(.include-answers) .answer-sheet { display: none !important; }
+  .problem-grid { grid-template-columns: repeat(4, 1fr); }
+  .problem { break-inside: avoid; }
+  .problem-page + .problem-page { margin-top: 0; padding-top: 0; border-top: none; }
+  .problem-page.page-break { page-break-after: always; }
+  body.font-large .problem-grid { grid-template-columns: repeat(2, 1fr); }
+  body.font-xlarge .problem-grid { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+  <header class="site-header no-print">
+    <h1>학년별 수학 문제집 생성기</h1>
+    <p class="subtitle">초등학교 1학년부터 고등학교 3학년까지, 학년·단원·난이도를 골라 나만의 수학 문제집을 만들어보세요.</p>
+  </header>
+
+  <main>
+    <section class="control-panel no-print">
+      <div class="field">
+        <label for="gradeSelect">학년</label>
+        <select id="gradeSelect"></select>
+      </div>
+
+      <div class="field">
+        <label>단원 선택</label>
+        <label class="inline-check"><input type="checkbox" id="customCountMode"> 단원별 문항 수 직접 지정</label>
+        <div id="topicList" class="topic-list"></div>
+      </div>
+
+      <div class="field">
+        <label for="fontSizeSelect">문제 글자 크기</label>
+        <select id="fontSizeSelect">
+          <option value="normal">기본</option>
+          <option value="large">크게 (저학년 추천)</option>
+          <option value="xlarge">매우 크게</option>
+        </select>
+      </div>
+
+      <div class="field" id="difficultyField">
+        <label>난이도</label>
+        <div class="radio-row">
+          <label><input type="radio" name="difficulty" value="easy"> 하</label>
+          <label><input type="radio" name="difficulty" value="medium" checked> 중</label>
+          <label><input type="radio" name="difficulty" value="hard"> 상</label>
+        </div>
+        <p class="hint exam-only">시험대비 모드에서는 난이도가 하/중/상 비율로 자동 혼합됩니다.</p>
+      </div>
+
+      <div class="field" id="countModeField">
+        <label for="countInput">문제 수 (6~80)</label>
+        <input type="number" id="countInput" value="20" min="6" max="80">
+      </div>
+
+      <div class="field">
+        <label>문제 유형</label>
+        <div class="radio-row">
+          <label><input type="radio" name="typeMode" value="auto" checked> 자동 혼합</label>
+          <label><input type="radio" name="typeMode" value="manual"> 직접 비율 설정</label>
+        </div>
+      </div>
+
+      <div class="field checkbox-field">
+        <label><input type="checkbox" checked disabled> 주관식 (기본)</label>
+        <label><input type="checkbox" id="typeChoice"> 객관식 포함</label>
+        <label><input type="checkbox" id="typeEssay"> 서술형 포함</label>
+      </div>
+
+      <div class="field hidden" id="typeManualField">
+        <label>유형 비율 직접 설정 (%)</label>
+        <div class="type-ratio-row">
+          <span>객관식 <input type="number" id="mcPercent" value="30" min="0" max="100" disabled> %</span>
+          <span>서술형 <input type="number" id="essayPercent" value="20" min="0" max="100" disabled> %</span>
+        </div>
+        <p class="hint">나머지는 주관식으로 채워져요. 객관식은 답이 숫자·단위로 끝나는 문제에만 자동 적용돼요.</p>
+      </div>
+
+      <div class="field checkbox-field">
+        <label><input type="checkbox" id="includeAnswers" checked> 인쇄 시 정답지 포함</label>
+        <label><input type="checkbox" id="previewAnswers"> 화면에서 정답 미리보기</label>
+        <label><input type="checkbox" id="examMode"> 시험대비 모드 (실전 모의고사 형식)</label>
+      </div>
+
+      <div class="button-row">
+        <button id="generateBtn" class="btn primary">문제집 생성하기</button>
+        <button id="printBtn" class="btn secondary">인쇄 / PDF 저장</button>
+        <button id="saveBtn" class="btn secondary">현재 문제집 저장</button>
+      </div>
+    </section>
+
+    <section class="panel-section no-print" id="pagePanel">
+      <div class="field">
+        <label for="pageSectionInput">페이지 수로 문제집 만들기</label>
+        <div class="page-row">
+          <input type="number" id="pageSectionInput" value="2" min="1" max="8">
+          <button id="generatePagesBtn" class="btn primary">이 페이지 수로 생성하기</button>
+        </div>
+        <p class="hint">왼쪽에서 고른 학년·단원·난이도가 그대로 적용되고, 페이지당 약 8문항 기준으로 문항 수가 계산돼요.</p>
+      </div>
+    </section>
+
+    <section class="panel-section no-print">
+      <div class="field">
+        <label for="savedList">저장된 문제집 불러오기</label>
+        <div class="saved-row">
+          <select id="savedList"><option value="">저장된 문제집이 없습니다</option></select>
+          <button id="loadSavedBtn" class="btn secondary">불러오기</button>
+          <button id="deleteSavedBtn" class="btn secondary danger">삭제</button>
+        </div>
+      </div>
+    </section>
+
+    <div id="emptyState" class="empty-state">
+      왼쪽에서 학년과 단원, 난이도를 고른 뒤 <b>문제집 생성하기</b> 버튼을 눌러보세요.
+    </div>
+
+    <section id="worksheetSection" class="worksheet-section hidden">
+      <div id="coverPage" class="sheet cover-page">
+        <div class="cover-band"></div>
+        <span id="coverBadge" class="cover-badge"></span>
+        <h1 id="coverTitle" class="cover-title"></h1>
+        <p id="coverSubtitle" class="cover-subtitle"></p>
+        <div class="cover-divider"></div>
+        <div class="cover-student">
+          <div class="cover-field"><span>학교</span><i></i></div>
+          <div class="cover-field"><span>학년 / 반</span><i></i></div>
+          <div class="cover-field"><span>이름</span><i></i></div>
+          <div class="cover-field"><span>날짜</span><i></i></div>
+        </div>
+        <p id="coverFooter" class="cover-footer"></p>
+      </div>
+
+      <div class="sheet">
+        <h2 id="worksheetTitle"></h2>
+        <div class="meta-row">
+          <p id="worksheetMeta" class="meta-text"></p>
+          <div class="student-info">
+            <span>이름: ________________</span>
+            <span class="exam-only">수험번호: ________________</span>
+            <span>날짜: ________________</span>
+            <span>점수: ________________</span>
+          </div>
+        </div>
+        <div id="problemList"></div>
+      </div>
+
+      <div id="answerSheet" class="sheet answer-sheet">
+        <h3 id="answerGradeLabel"></h3>
+        <div id="answerList" class="answer-grid"></div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer no-print">
+    <p>생성된 문제는 매번 랜덤으로 새로 만들어집니다. 마음에 드는 문제집이 나올 때까지 다시 생성해보세요.</p>
+  </footer>
+
+<script>
+// ---------- utils ----------
+function randInt(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min; }
+function randChoice(arr) { return arr[randInt(0, arr.length - 1)]; }
+function shuffle(arr) {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = randInt(0, i);
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+function gcd(a, b) { a = Math.abs(a); b = Math.abs(b); while (b) { [a, b] = [b, a % b]; } return a || 1; }
+function simplifyFrac(n, d) {
+  if (d < 0) { n = -n; d = -d; }
+  const g = gcd(n, d);
+  return [n / g, d / g];
+}
+function frac(n, d) {
+  const [sn, sd] = simplifyFrac(n, d);
+  const sign = sn < 0 ? '-' : '';
+  if (sd === 1) return `${sign}${Math.abs(sn)}`;
+  return `${sign}<span class="frac"><span class="num">${Math.abs(sn)}</span><span class="den">${sd}</span></span>`;
+}
+function sgnTerm(v) { return `${v >= 0 ? '+' : '-'} ${Math.abs(v)}`; }
+
+// ---------- grade 1 (초1) ----------
+function addSub1Digit(diff) {
+  let a = randInt(0, 9), b = randInt(0, 9);
+  const op = Math.random() < 0.5 ? '+' : '-';
+  if (diff === 'easy' && op === '+' && a + b > 9) b = randInt(0, 9 - a);
+  if (op === '-' && a < b) [a, b] = [b, a];
+  const ans = op === '+' ? a + b : a - b;
+  return { q: `${a} ${op} ${b} = `, a: String(ans) };
+}
+function compareNumbers(diff) {
+  const [lo, hi] = diff === 'easy' ? [0, 20] : diff === 'medium' ? [0, 50] : [0, 100];
+  let a = randInt(lo, hi), b = randInt(lo, hi);
+  while (a === b) b = randInt(lo, hi);
+  return { q: `${a}  ○  ${b}   (>, <, = 중 알맞은 부호를 쓰세요)`, a: a > b ? '>' : '<' };
+}
+function addSubCarry(diff) {
+  const [lo, hi] = diff === 'easy' ? [10, 30] : diff === 'medium' ? [10, 60] : [10, 99];
+  let a = randInt(lo, hi), b = randInt(lo, hi);
+  const op = Math.random() < 0.5 ? '+' : '-';
+  if (op === '-' && a < b) [a, b] = [b, a];
+  const ans = op === '+' ? a + b : a - b;
+  return { q: `${a} ${op} ${b} = `, a: String(ans) };
+}
+function make10(diff) {
+  const a = randInt(1, 9);
+  return { q: `${a} + ___ = 10`, a: String(10 - a) };
+}
+function clockHour(diff) {
+  const start = randInt(1, 12);
+  const add = diff === 'easy' ? randInt(1, 3) : diff === 'medium' ? randInt(1, 6) : randInt(1, 11);
+  let end = (start + add) % 12; if (end === 0) end = 12;
+  return { q: `지금이 ${start}시입니다. ${add}시간 후는 몇 시입니까?`, a: `${end}시` };
+}
+
+// ---------- grade 2 (초2) ----------
+function addSub2Digit(diff) {
+  const hi = diff === 'easy' ? 50 : diff === 'medium' ? 99 : 999;
+  let a = randInt(10, hi), b = randInt(10, diff === 'hard' ? 99 : hi);
+  const op = Math.random() < 0.5 ? '+' : '-';
+  if (op === '-' && a < b) [a, b] = [b, a];
+  const ans = op === '+' ? a + b : a - b;
+  return { q: `${a} ${op} ${b} = `, a: String(ans) };
+}
+function multTable(diff) {
+  const bmax = diff === 'easy' ? 5 : 9;
+  const a = randInt(2, 9), b = randInt(2, bmax);
+  return { q: `${a} × ${b} = `, a: String(a * b) };
+}
+function lengthAddSub(diff) {
+  const [lo, hi] = diff === 'easy' ? [10, 50] : diff === 'medium' ? [10, 99] : [10, 199];
+  let a = randInt(lo, hi), b = randInt(lo, Math.min(hi, 99));
+  const op = Math.random() < 0.5 ? '+' : '-';
+  if (op === '-' && a < b) [a, b] = [b, a];
+  const ans = op === '+' ? a + b : a - b;
+  return { q: `${a}cm ${op} ${b}cm = `, a: `${ans}cm` };
+}
+function clockMinutes(diff) {
+  const h = randInt(1, 12), m = randChoice([0, 10, 20, 30, 40, 50]);
+  const addMin = diff === 'easy' ? randChoice([10, 20, 30]) : diff === 'medium' ? randChoice([10, 20, 30, 40, 50]) : randInt(5, 90);
+  const total = h * 60 + m + addMin;
+  let eh = Math.floor(total / 60) % 12; if (eh === 0) eh = 12;
+  const em = total % 60;
+  return { q: `${h}시 ${m}분에서 ${addMin}분 후는 몇 시 몇 분입니까?`, a: `${eh}시 ${em}분` };
+}
+
+// ---------- grade 3 (초3) ----------
+function multDiv(diff) {
+  if (Math.random() < 0.5) {
+    const a = randInt(10, diff === 'hard' ? 99 : diff === 'medium' ? 50 : 30);
+    const b = diff === 'easy' ? randInt(2, 9) : randInt(2, diff === 'hard' ? 99 : 20);
+    return { q: `${a} × ${b} = `, a: String(a * b) };
+  }
+  const divisor = randInt(2, 9);
+  const quotient = randInt(2, diff === 'easy' ? 9 : 20);
+  const remainder = diff === 'easy' ? 0 : randInt(0, divisor - 1);
+  const dividend = divisor * quotient + remainder;
+  if (remainder === 0) return { q: `${dividend} ÷ ${divisor} = `, a: String(quotient) };
+  return { q: `${dividend} ÷ ${divisor} = ___ … ___ (몫과 나머지)`, a: `${quotient} … ${remainder}` };
+}
+function fractionCompare(diff) {
+  const den = diff === 'easy' ? randInt(2, 6) : randInt(2, 12);
+  let n1 = randInt(1, den - 1), n2 = randInt(1, den - 1);
+  while (n1 === n2) n2 = randInt(1, den - 1);
+  return { q: `${frac(n1, den)}  ○  ${frac(n2, den)}   (>, <, = 중 알맞은 부호를 쓰세요)`, a: n1 > n2 ? '>' : '<' };
+}
+function timeCalcE3(diff) {
+  const h1 = randInt(1, 3), m1 = randInt(0, 59);
+  const h2 = randInt(0, diff === 'easy' ? 1 : 3), m2 = randInt(0, 59);
+  const total1 = h1 * 60 + m1, total2 = h2 * 60 + m2;
+  const op = Math.random() < 0.5 ? '+' : '-';
+  let a = total1, b = total2;
+  if (op === '-' && a < b) [a, b] = [b, a];
+  const res = op === '+' ? a + b : a - b;
+  const rh = Math.floor(res / 60), rm = res % 60;
+  return { q: `${h1}시간 ${m1}분 ${op} ${h2}시간 ${m2}분 = `, a: `${rh}시간 ${rm}분` };
+}
+function circleBasic(diff) {
+  const r = randInt(2, diff === 'easy' ? 10 : 30);
+  if (Math.random() < 0.5) return { q: `반지름이 ${r}cm인 원의 지름을 구하세요.`, a: `${r * 2}cm` };
+  const d = r * 2;
+  return { q: `지름이 ${d}cm인 원의 반지름을 구하세요.`, a: `${r}cm` };
+}
+
+// ---------- grade 4 (초4) ----------
+function bigNumberOps(diff) {
+  const digits = diff === 'easy' ? 3 : diff === 'medium' ? 4 : 5;
+  const min = Math.pow(10, digits - 1), max = Math.pow(10, digits) - 1;
+  let a = randInt(min, max), b = randInt(min, max);
+  const op = Math.random() < 0.5 ? '+' : '-';
+  if (op === '-' && a < b) [a, b] = [b, a];
+  const ans = op === '+' ? a + b : a - b;
+  return { q: `${a} ${op} ${b} = `, a: String(ans) };
+}
+function decimalBasic(diff) {
+  const denom = diff === 'easy' ? 10 : 100;
+  const mk = () => randInt(1, diff === 'easy' ? 90 : 990) / denom;
+  let a = mk(), b = mk();
+  const op = Math.random() < 0.5 ? '+' : '-';
+  if (op === '-' && a < b) [a, b] = [b, a];
+  const ans = Number((op === '+' ? a + b : a - b).toFixed(2));
+  return { q: `${a} ${op} ${b} = `, a: String(ans) };
+}
+function angleCalc(diff) {
+  const a = randInt(20, 130), b = randInt(20, 130);
+  if (a + b >= 170) return angleCalc(diff);
+  if (Math.random() < 0.5) {
+    const c = 180 - a - b;
+    return { q: `삼각형의 세 각 중 두 각이 ${a}°, ${b}°일 때 나머지 한 각을 구하세요.`, a: `${c}°` };
+  }
+  const sum = diff === 'easy' ? 90 : 180;
+  const x = sum - a;
+  if (x <= 0) return angleCalc(diff);
+  return { q: `두 각의 합이 ${sum}°이고 한 각이 ${a}°일 때 다른 한 각을 구하세요.`, a: `${x}°` };
+}
+function multiDigitMultDiv(diff) {
+  if (Math.random() < 0.5) {
+    const a = randInt(100, 999), b = randInt(10, diff === 'easy' ? 20 : 99);
+    return { q: `${a} × ${b} = `, a: String(a * b) };
+  }
+  const divisor = randInt(10, diff === 'easy' ? 20 : 99);
+  const quotient = randInt(10, 99);
+  const dividend = divisor * quotient;
+  return { q: `${dividend} ÷ ${divisor} = `, a: String(quotient) };
+}
+
+// ---------- grade 5 (초5) ----------
+function fractionAddSub(diff) {
+  let d1 = randInt(2, diff === 'easy' ? 6 : 12), d2 = randInt(2, diff === 'easy' ? 6 : 12);
+  let n1 = randInt(1, d1 - 1), n2 = randInt(1, d2 - 1);
+  const op = Math.random() < 0.5 ? '+' : '-';
+  let lcm = (d1 * d2) / gcd(d1, d2);
+  let num1 = n1 * (lcm / d1), num2 = n2 * (lcm / d2);
+  if (op === '-' && num1 < num2) {
+    [n1, n2] = [n2, n1];
+    [d1, d2] = [d2, d1];
+    [num1, num2] = [num2, num1];
+  }
+  const resNum = op === '+' ? num1 + num2 : num1 - num2;
+  return { q: `${frac(n1, d1)} ${op} ${frac(n2, d2)} = `, a: frac(resNum, lcm) };
+}
+function decimalMult(diff) {
+  const a = (randInt(1, diff === 'easy' ? 90 : 990) / 10).toFixed(1);
+  const b = randInt(2, diff === 'easy' ? 9 : 20);
+  const ans = (parseFloat(a) * b).toFixed(2).replace(/\.?0+$/, '');
+  return { q: `${a} × ${b} = `, a: ans };
+}
+function factorsMultiples(diff) {
+  const [lo, hi] = diff === 'easy' ? [4, 20] : diff === 'medium' ? [8, 50] : [10, 100];
+  const a = randInt(lo, hi), b = randInt(lo, hi);
+  if (Math.random() < 0.5) return { q: `${a}과(와) ${b}의 최대공약수를 구하세요.`, a: String(gcd(a, b)) };
+  const l = (a * b) / gcd(a, b);
+  return { q: `${a}과(와) ${b}의 최소공배수를 구하세요.`, a: String(l) };
+}
+function averageBasic(diff) {
+  const n = diff === 'easy' ? 3 : diff === 'medium' ? 4 : 5;
+  const maxVal = diff === 'easy' ? 20 : 50;
+  const targetAvg = randInt(diff === 'easy' ? 3 : 5, maxVal - 5);
+  let nums = [], sum = 0;
+  for (let i = 0; i < n - 1; i++) { const v = randInt(1, maxVal); nums.push(v); sum += v; }
+  const last = targetAvg * n - sum;
+  if (last < 1 || last > maxVal * 2) return averageBasic(diff);
+  nums.push(last);
+  nums = shuffle(nums);
+  return { q: `다음 수들의 평균을 구하세요: ${nums.join(', ')}`, a: String(targetAvg) };
+}
+function polygonArea(diff) {
+  const b = randInt(3, diff === 'easy' ? 15 : 30), h = randInt(3, diff === 'easy' ? 15 : 30);
+  if (Math.random() < 0.5) return { q: `밑변이 ${b}cm, 높이가 ${h}cm인 삼각형의 넓이를 구하세요.`, a: `${(b * h) / 2}cm²` };
+  return { q: `밑변이 ${b}cm, 높이가 ${h}cm인 평행사변형의 넓이를 구하세요.`, a: `${b * h}cm²` };
+}
+
+// ---------- grade 6 (초6) ----------
+function fractionDiv(diff) {
+  const d1 = randInt(2, diff === 'easy' ? 6 : 12), n1 = randInt(1, d1 - 1);
+  const d2 = randInt(2, diff === 'easy' ? 6 : 12), n2 = randInt(1, d2 - 1);
+  const resNum = n1 * d2, resDen = d1 * n2;
+  return { q: `${frac(n1, d1)} ÷ ${frac(n2, d2)} = `, a: frac(resNum, resDen) };
+}
+function decimalDiv(diff) {
+  const b = randInt(2, diff === 'easy' ? 9 : 20);
+  const q = randInt(1, diff === 'easy' ? 90 : 500) / 10;
+  const a = (b * q).toFixed(2);
+  return { q: `${a} ÷ ${b} = `, a: String(q) };
+}
+function ratioProblem(diff) {
+  const [lo, hi] = diff === 'easy' ? [2, 20] : diff === 'medium' ? [5, 50] : [5, 100];
+  let a = randInt(lo, hi), b = randInt(lo, hi);
+  while (a === b) b = randInt(lo, hi);
+  const g = gcd(a, b);
+  return { q: `${a} : ${b} 를 가장 간단한 자연수의 비로 나타내세요.`, a: `${a / g} : ${b / g}` };
+}
+function proportionEq(diff) {
+  const a = randInt(2, diff === 'easy' ? 9 : 20), b = randInt(2, diff === 'easy' ? 9 : 20);
+  const k = randInt(2, 5);
+  const c = a * k, x = b * k;
+  return { q: `${a} : ${b} = ${c} : x  일 때 x의 값을 구하세요.`, a: String(x) };
+}
+function volumeBox(diff) {
+  const l = randInt(2, diff === 'easy' ? 10 : 20), w = randInt(2, diff === 'easy' ? 10 : 20), h = randInt(2, diff === 'easy' ? 10 : 20);
+  return { q: `가로 ${l}cm, 세로 ${w}cm, 높이 ${h}cm인 직육면체의 부피를 구하세요.`, a: `${l * w * h}cm³` };
+}
+
+// ---------- 중1 ----------
+function integerOps(diff) {
+  const range = diff === 'easy' ? 10 : diff === 'medium' ? 20 : 50;
+  let a = randInt(-range, range), b = randInt(-range, range);
+  const ops = diff === 'easy' ? ['+', '-'] : ['+', '-', '×', '÷'];
+  let op = randChoice(ops);
+  if (op === '÷') { b = b === 0 ? 1 : b; a = b * randInt(-10, 10); }
+  let ans;
+  if (op === '+') ans = a + b; else if (op === '-') ans = a - b; else if (op === '×') ans = a * b; else ans = a / b;
+  return { q: `(${a}) ${op} (${b}) = `, a: String(ans) };
+}
+function linearExpr(diff) {
+  const a = randInt(-9, 9) || 2, x = randInt(1, diff === 'easy' ? 10 : 20);
+  const b = randInt(-9, 9);
+  return { q: `x = ${x} 일 때, ${a}x ${sgnTerm(b)} 의 값을 구하세요.`, a: String(a * x + b) };
+}
+function linearEq(diff) {
+  const a = randInt(1, diff === 'easy' ? 9 : 12), x = randInt(-10, 10);
+  const b = randInt(-20, 20);
+  const c = a * x + b;
+  return { q: `${a}x ${sgnTerm(b)} = ${c} 를 만족하는 x의 값을 구하세요.`, a: String(x) };
+}
+function coordQuadrant(diff) {
+  const x = randInt(-10, 10) || 1, y = randInt(-10, 10) || 1;
+  let quad;
+  if (x > 0 && y > 0) quad = 1; else if (x < 0 && y > 0) quad = 2; else if (x < 0 && y < 0) quad = 3; else quad = 4;
+  return { q: `점 (${x}, ${y})는 제 몇 사분면 위의 점입니까?`, a: `제${quad}사분면` };
+}
+function statsMean(diff) {
+  const n = diff === 'easy' ? 4 : 5;
+  const maxVal = diff === 'easy' ? 15 : 20;
+  const targetAvg = randInt(-5, maxVal);
+  let nums = [], sum = 0;
+  for (let i = 0; i < n - 1; i++) { const v = randInt(-10, maxVal); nums.push(v); sum += v; }
+  const last = targetAvg * n - sum;
+  if (Math.abs(last) > 30) return statsMean(diff);
+  nums.push(last);
+  nums = shuffle(nums);
+  return { q: `다음 자료의 평균을 구하세요: ${nums.join(', ')}`, a: String(targetAvg) };
+}
+
+// ---------- 중2 ----------
+function simultaneousEq(diff) {
+  const x = randInt(-10, 10), y = randInt(-10, 10);
+  const a1 = randInt(1, 5), b1 = randInt(1, 5), a2 = randInt(1, 5), b2 = randInt(1, 5);
+  const c1 = a1 * x + b1 * y, c2 = a2 * x - b2 * y;
+  return { q: `${a1}x + ${b1}y = ${c1},  ${a2}x - ${b2}y = ${c2}  연립방정식을 풀어 x, y의 값을 구하세요.`, a: `x=${x}, y=${y}` };
+}
+function linearFunc(diff) {
+  const a = randInt(-5, 5) || 2, b = randInt(-10, 10);
+  const x = randInt(-10, 10);
+  return { q: `일차함수 y = ${a}x ${sgnTerm(b)} 에서 x = ${x} 일 때 y의 값을 구하세요.`, a: String(a * x + b) };
+}
+function probabilityBasic(diff) {
+  const total = randInt(diff === 'easy' ? 5 : 10, diff === 'easy' ? 10 : 20);
+  const favorable = randInt(1, total - 1);
+  const [sn, sd] = simplifyFrac(favorable, total);
+  return { q: `주머니에 공이 ${total}개 있고 그중 ${favorable}개가 특정 색입니다. 하나를 뽑을 때 그 색일 확률을 기약분수로 나타내세요.`, a: `${sn}/${sd}` };
+}
+function linearInequality(diff) {
+  const a = randInt(1, diff === 'easy' ? 5 : 9), b = randInt(-20, 20);
+  const x = randInt(-10, 10);
+  const c = a * x + b;
+  const dir = Math.random() < 0.5 ? '>' : '<';
+  return { q: `${a}x ${sgnTerm(b)} ${dir} ${c} 의 해를 구하세요.`, a: dir === '>' ? `x > ${x}` : `x < ${x}` };
+}
+function exponentLaws(diff) {
+  const base = randChoice(['a', 'x']);
+  const m = randInt(2, diff === 'easy' ? 5 : 9), n = randInt(2, diff === 'easy' ? 5 : 9);
+  if (Math.random() < 0.5) return { q: `${base}^${m} × ${base}^${n} 을 간단히 하세요.`, a: `${base}^${m + n}` };
+  const [big, small] = m > n ? [m, n] : [n, m];
+  return { q: `${base}^${big} ÷ ${base}^${small} 을 간단히 하세요.`, a: big - small === 0 ? '1' : `${base}^${big - small}` };
+}
+
+// ---------- 중3 ----------
+function factorization(diff) {
+  const p = randInt(1, diff === 'easy' ? 5 : 9), q = randInt(1, diff === 'easy' ? 5 : 9);
+  return { q: `x² + ${p + q}x + ${p * q} 를 인수분해하세요.`, a: `(x+${p})(x+${q})` };
+}
+function quadraticEq(diff) {
+  const p = randInt(-9, 9) || 1, q = randInt(-9, 9) || 1;
+  const b = -(p + q), c = p * q;
+  const bTerm = b === 0 ? '' : ` ${sgnTerm(b)}x`;
+  return { q: `x²${bTerm} ${sgnTerm(c)} = 0 을 만족하는 x의 값을 모두 구하세요.`, a: `x=${p} 또는 x=${q}` };
+}
+function pythagorean(diff) {
+  const triples = [[3, 4, 5], [6, 8, 10], [5, 12, 13], [8, 15, 17], [9, 12, 15], [7, 24, 25], [20, 21, 29]];
+  const [a, b, c] = randChoice(triples);
+  if (Math.random() < 0.6) return { q: `직각삼각형의 두 변의 길이가 ${a}, ${b}일 때 빗변의 길이를 구하세요.`, a: String(c) };
+  const missing = Math.random() < 0.5 ? a : b;
+  const known = missing === a ? b : a;
+  return { q: `직각삼각형의 빗변이 ${c}, 다른 한 변이 ${known}일 때 나머지 한 변의 길이를 구하세요.`, a: String(missing) };
+}
+function squareRootCalc(diff) {
+  const b = randChoice([2, 3, 5, 6, 7]);
+  const k1 = randInt(1, diff === 'easy' ? 5 : 9), k2 = randInt(1, diff === 'easy' ? 5 : 9);
+  const op = Math.random() < 0.5 ? '+' : '-';
+  const res = op === '+' ? k1 + k2 : k1 - k2;
+  const resStr = res === 0 ? '0' : res === 1 ? `√${b}` : res === -1 ? `-√${b}` : `${res}√${b}`;
+  return { q: `${k1}√${b} ${op} ${k2}√${b} = `, a: resStr };
+}
+function similarity(diff) {
+  const ratio = randInt(2, diff === 'easy' ? 3 : 5);
+  const side = randInt(2, diff === 'easy' ? 10 : 20);
+  return { q: `닮음비가 1:${ratio}인 두 도형이 있습니다. 작은 도형의 한 변이 ${side}cm일 때 큰 도형의 대응변의 길이를 구하세요.`, a: `${side * ratio}cm` };
+}
+
+// ---------- 고1 ----------
+function polynomialOps(diff) {
+  const a = randInt(1, 5), b = randInt(1, 5);
+  return { q: `(x + ${a})(x + ${b}) 를 전개하세요.`, a: `x² + ${a + b}x + ${a * b}` };
+}
+function quadraticIneq(diff) {
+  const p = randInt(-8, 8) || 1, q = randInt(-8, 8) || 2;
+  const lo = Math.min(p, q), hi = Math.max(p, q);
+  const b = -(p + q), c = p * q;
+  return { q: `x² ${sgnTerm(b)}x ${sgnTerm(c)} < 0 의 해를 구하세요.`, a: `${lo} < x < ${hi}` };
+}
+function functionEval(diff) {
+  const a = randInt(-5, 5) || 1, b = randInt(-5, 5), c = randInt(-5, 5);
+  const x = randInt(-5, 5);
+  return { q: `f(x) = ${a}x² ${sgnTerm(b)}x ${sgnTerm(c)} 일 때 f(${x})의 값을 구하세요.`, a: String(a * x * x + b * x + c) };
+}
+function remainderTheorem(diff) {
+  const a = randInt(1, diff === 'easy' ? 3 : 5), b = randInt(-5, 5), c = randInt(-5, 5);
+  const k = randInt(-3, 3) || 1;
+  const rem = a * k * k + b * k + c;
+  return { q: `f(x) = ${a}x² ${sgnTerm(b)}x ${sgnTerm(c)} 를 (x ${k >= 0 ? '-' : '+'} ${Math.abs(k)})로 나눈 나머지를 구하세요.`, a: String(rem) };
+}
+function setOps(diff) {
+  const total = randInt(diff === 'easy' ? 10 : 15, diff === 'easy' ? 20 : 30);
+  const A = randInt(4, total - 4), B = randInt(4, total - 4);
+  const inter = randInt(1, Math.min(A, B));
+  const union = A + B - inter;
+  if (Math.random() < 0.5) return { q: `전체집합의 부분집합 A, B에 대해 n(A)=${A}, n(B)=${B}, n(A∩B)=${inter}일 때 n(A∪B)를 구하세요.`, a: String(union) };
+  return { q: `n(A)=${A}, n(B)=${B}, n(A∪B)=${union}일 때 n(A∩B)를 구하세요.`, a: String(inter) };
+}
+
+// ---------- 고2 ----------
+function exponentLog(diff) {
+  if (Math.random() < 0.5) {
+    const base = randInt(2, 5), exp = randInt(2, diff === 'easy' ? 3 : 5);
+    return { q: `${base}^${exp} 의 값을 구하세요.`, a: String(Math.pow(base, exp)) };
+  }
+  const base = randInt(2, 5), exp = randInt(1, 4);
+  return { q: `log₍${base}₎ ${Math.pow(base, exp)} 의 값을 구하세요.`, a: String(exp) };
+}
+function trig(diff) {
+  const table = {
+    0: { sin: '0', cos: '1', tan: '0' },
+    30: { sin: '1/2', cos: '√3/2', tan: '√3/3' },
+    45: { sin: '√2/2', cos: '√2/2', tan: '1' },
+    60: { sin: '√3/2', cos: '1/2', tan: '√3' },
+    90: { sin: '1', cos: '0', tan: '정의되지 않음' },
+  };
+  const angle = randChoice([0, 30, 45, 60, 90]);
+  const fn = randChoice(['sin', 'cos', 'tan']);
+  return { q: `${fn} ${angle}° 의 값을 구하세요.`, a: table[angle][fn] };
+}
+function sequence(diff) {
+  if (Math.random() < 0.5) {
+    const a1 = randInt(1, 10), d = randInt(1, diff === 'easy' ? 5 : 9);
+    const n = randInt(5, diff === 'easy' ? 10 : 20);
+    return { q: `등차수열 ${a1}, ${a1 + d}, ${a1 + 2 * d}, ... 의 제 ${n}항을 구하세요.`, a: String(a1 + (n - 1) * d) };
+  }
+  const a1 = randInt(1, 5), r = randInt(2, 3);
+  const n = randInt(3, diff === 'easy' ? 5 : 7);
+  return { q: `등비수열 ${a1}, ${a1 * r}, ${a1 * r * r}, ... 의 제 ${n}항을 구하세요.`, a: String(a1 * Math.pow(r, n - 1)) };
+}
+function sigmaSum(diff) {
+  const n = randInt(5, diff === 'easy' ? 10 : 20);
+  if (Math.random() < 0.5) return { q: `∑ (k=1부터 ${n}까지) k 의 값을 구하세요.`, a: String((n * (n + 1)) / 2) };
+  return { q: `∑ (k=1부터 ${n}까지) k² 의 값을 구하세요.`, a: String((n * (n + 1) * (2 * n + 1)) / 6) };
+}
+function vectorMagnitude(diff) {
+  const pairs = [[3, 4, 5], [6, 8, 10], [5, 12, 13], [8, 15, 17], [9, 12, 15]];
+  const [x, y, m] = randChoice(pairs);
+  const sx = Math.random() < 0.5 ? x : -x, sy = Math.random() < 0.5 ? y : -y;
+  return { q: `벡터 a = (${sx}, ${sy}) 의 크기 |a|를 구하세요.`, a: String(m) };
+}
+
+// ---------- 고3 ----------
+function derivative(diff) {
+  const a = randInt(1, 5), n = randInt(2, diff === 'easy' ? 3 : 4), b = randInt(-5, 5);
+  return { q: `f(x) = ${a}x^${n} ${sgnTerm(b)}x 일 때 f'(x)를 구하세요.`, a: `${a * n}x^${n - 1} ${sgnTerm(b)}` };
+}
+function integralProblem(diff) {
+  const a = randInt(1, 5), n = randInt(1, diff === 'easy' ? 3 : 4);
+  const g = gcd(a, n + 1);
+  const coef = g === n + 1 ? `${a / g}` : `${a / g}/${(n + 1) / g}`;
+  return { q: `∫ ${a}x^${n} dx 를 구하세요. (적분상수 C)`, a: `${coef} x^${n + 1} + C` };
+}
+function probStats(diff) {
+  if (Math.random() < 0.5) {
+    const n = randInt(diff === 'easy' ? 3 : 4, diff === 'easy' ? 5 : 7);
+    const r = randInt(2, n);
+    const fact = (k) => { let f = 1; for (let i = 2; i <= k; i++) f *= i; return f; };
+    return { q: `서로 다른 ${n}개 중 ${r}개를 택하여 일렬로 나열하는 경우의 수를 구하세요.`, a: String(fact(n) / fact(n - r)) };
+  }
+  const nums = Array.from({ length: 5 }, () => randInt(1, 10));
+  const mean = Number((nums.reduce((s, v) => s + v, 0) / nums.length).toFixed(2));
+  return { q: `다음 자료의 평균을 구하세요: ${nums.join(', ')}`, a: String(mean) };
+}
+function limitBasic(diff) {
+  const a = randInt(1, 5), b = randInt(-5, 5), x = randInt(-5, 5);
+  return { q: `lim (x→${x}) (${a}x ${sgnTerm(b)}) 의 값을 구하세요.`, a: String(a * x + b) };
+}
+function definiteIntegral(diff) {
+  const a = randInt(1, 5), n = randInt(1, diff === 'easy' ? 2 : 3);
+  const lo = randInt(0, 2), hi = lo + randInt(1, diff === 'easy' ? 2 : 4);
+  const antiAt = (x) => (a / (n + 1)) * Math.pow(x, n + 1);
+  const val = Number((antiAt(hi) - antiAt(lo)).toFixed(2));
+  return { q: `∫ (${lo}부터 ${hi}까지) ${a}x^${n} dx 의 값을 구하세요.`, a: String(val) };
+}
+
+// ---------- curriculum tree ----------
+const CURRICULUM = [
+  {
+    group: '초등학교',
+    grades: [
+      { id: 'e1', label: '초등학교 1학년', topics: [
+        { id: 'add_sub_1digit', label: '한 자리 수 덧셈과 뺄셈', gen: addSub1Digit },
+        { id: 'compare', label: '수의 크기 비교', gen: compareNumbers },
+        { id: 'add_sub_carry', label: '두 자리 수 덧셈과 뺄셈', gen: addSubCarry },
+        { id: 'make10', label: '10 만들기', gen: make10 },
+        { id: 'clock_hour', label: '시각과 시간(시 단위)', gen: clockHour },
+      ] },
+      { id: 'e2', label: '초등학교 2학년', topics: [
+        { id: 'add_sub_2digit', label: '두 자리 수 덧셈과 뺄셈', gen: addSub2Digit },
+        { id: 'mult_table', label: '곱셈구구', gen: multTable },
+        { id: 'length_add_sub', label: '길이의 합과 차', gen: lengthAddSub },
+        { id: 'clock_minutes', label: '시각과 시간(분 단위)', gen: clockMinutes },
+      ] },
+      { id: 'e3', label: '초등학교 3학년', topics: [
+        { id: 'mult_div', label: '곱셈과 나눗셈', gen: multDiv },
+        { id: 'fraction_compare', label: '분수의 크기 비교', gen: fractionCompare },
+        { id: 'time_calc_e3', label: '시간의 덧셈과 뺄셈', gen: timeCalcE3 },
+        { id: 'circle_basic', label: '원의 반지름과 지름', gen: circleBasic },
+      ] },
+      { id: 'e4', label: '초등학교 4학년', topics: [
+        { id: 'big_number_ops', label: '큰 수의 덧셈과 뺄셈', gen: bigNumberOps },
+        { id: 'decimal_basic', label: '소수의 덧셈과 뺄셈', gen: decimalBasic },
+        { id: 'angle_calc', label: '각도의 계산', gen: angleCalc },
+        { id: 'multi_digit_multdiv', label: '곱셈과 나눗셈(세 자리 수)', gen: multiDigitMultDiv },
+      ] },
+      { id: 'e5', label: '초등학교 5학년', topics: [
+        { id: 'fraction_add_sub', label: '분수의 덧셈과 뺄셈', gen: fractionAddSub },
+        { id: 'decimal_mult', label: '소수의 곱셈', gen: decimalMult },
+        { id: 'factors_multiples', label: '약수와 배수', gen: factorsMultiples },
+        { id: 'average_basic', label: '평균 구하기', gen: averageBasic },
+        { id: 'polygon_area', label: '다각형의 넓이', gen: polygonArea },
+      ] },
+      { id: 'e6', label: '초등학교 6학년', topics: [
+        { id: 'fraction_div', label: '분수의 나눗셈', gen: fractionDiv },
+        { id: 'decimal_div', label: '소수의 나눗셈', gen: decimalDiv },
+        { id: 'ratio', label: '비와 비율', gen: ratioProblem },
+        { id: 'proportion_eq', label: '비례식', gen: proportionEq },
+        { id: 'volume_box', label: '직육면체의 부피', gen: volumeBox },
+      ] },
+    ],
+  },
+  {
+    group: '중학교',
+    grades: [
+      { id: 'm1', label: '중학교 1학년', topics: [
+        { id: 'integer_ops', label: '정수와 유리수의 계산', gen: integerOps },
+        { id: 'linear_expr', label: '문자와 식', gen: linearExpr },
+        { id: 'linear_eq', label: '일차방정식', gen: linearEq },
+        { id: 'coord_quadrant', label: '좌표평면과 사분면', gen: coordQuadrant },
+        { id: 'stats_mean', label: '자료의 평균', gen: statsMean },
+      ] },
+      { id: 'm2', label: '중학교 2학년', topics: [
+        { id: 'simultaneous_eq', label: '연립방정식', gen: simultaneousEq },
+        { id: 'linear_func', label: '일차함수', gen: linearFunc },
+        { id: 'probability_basic', label: '확률', gen: probabilityBasic },
+        { id: 'linear_inequality', label: '일차부등식', gen: linearInequality },
+        { id: 'exponent_laws', label: '지수법칙', gen: exponentLaws },
+      ] },
+      { id: 'm3', label: '중학교 3학년', topics: [
+        { id: 'factorization', label: '인수분해', gen: factorization },
+        { id: 'quadratic_eq', label: '이차방정식', gen: quadraticEq },
+        { id: 'pythagorean', label: '피타고라스 정리', gen: pythagorean },
+        { id: 'square_root_calc', label: '제곱근의 계산', gen: squareRootCalc },
+        { id: 'similarity', label: '도형의 닮음', gen: similarity },
+      ] },
+    ],
+  },
+  {
+    group: '고등학교',
+    grades: [
+      { id: 'h1', label: '고등학교 1학년', topics: [
+        { id: 'polynomial_ops', label: '다항식의 연산', gen: polynomialOps },
+        { id: 'quadratic_ineq', label: '이차부등식', gen: quadraticIneq },
+        { id: 'function_eval', label: '함수의 값', gen: functionEval },
+        { id: 'remainder_theorem', label: '나머지정리', gen: remainderTheorem },
+        { id: 'set_ops', label: '집합의 연산', gen: setOps },
+      ] },
+      { id: 'h2', label: '고등학교 2학년', topics: [
+        { id: 'exponent_log', label: '지수와 로그', gen: exponentLog },
+        { id: 'trig', label: '삼각함수', gen: trig },
+        { id: 'sequence', label: '수열', gen: sequence },
+        { id: 'sigma_sum', label: '수열의 합(시그마)', gen: sigmaSum },
+        { id: 'vector_magnitude', label: '벡터의 크기', gen: vectorMagnitude },
+      ] },
+      { id: 'h3', label: '고등학교 3학년', topics: [
+        { id: 'derivative', label: '미분', gen: derivative },
+        { id: 'integral', label: '적분(부정적분)', gen: integralProblem },
+        { id: 'prob_stats', label: '확률과 통계', gen: probStats },
+        { id: 'limit_basic', label: '함수의 극한', gen: limitBasic },
+        { id: 'definite_integral', label: '정적분', gen: definiteIntegral },
+      ] },
+    ],
+  },
+];
+
+// ---------- curated word problems (문장제) ----------
+const WORD_BANK = {
+  e1: [
+    { q: '사과가 4개 있었는데 3개를 더 샀습니다. 사과는 모두 몇 개입니까?', a: '7개' },
+    { q: '연필 9자루 중에서 4자루를 친구에게 주었습니다. 남은 연필은 몇 자루입니까?', a: '5자루' },
+    { q: '빨간 구슬이 6개, 파란 구슬이 5개 있습니다. 구슬은 모두 몇 개입니까?', a: '11개' },
+    { q: '초콜릿 12개 중 7개를 먹었습니다. 남은 초콜릿은 몇 개입니까?', a: '5개' },
+  ],
+  e2: [
+    { q: '한 상자에 사탕이 24개 들어 있습니다. 3상자에는 사탕이 모두 몇 개 있습니까?', a: '72개' },
+    { q: '구슬 45개를 5명이 똑같이 나누어 가지면 한 명이 몇 개씩 가지게 됩니까?', a: '9개' },
+    { q: '학생 128명 중 남학생이 67명입니다. 여학생은 몇 명입니까?', a: '61명' },
+    { q: '한 봉지에 8개씩 들어있는 사탕이 7봉지 있습니다. 사탕은 모두 몇 개입니까?', a: '56개' },
+  ],
+  e3: [
+    { q: '한 상자에 딸기가 15개씩 들어 있습니다. 6상자에는 딸기가 모두 몇 개 있습니까?', a: '90개' },
+    { q: '리본 84cm를 7명이 똑같이 나누어 가지면 한 명이 몇 cm씩 가지게 됩니까?', a: '12cm' },
+    { q: '피자 한 판을 8조각으로 나누었습니다. 3조각을 먹었다면 먹은 양은 피자 전체의 몇 분의 몇입니까?', a: '3/8' },
+    { q: '책 96권을 한 칸에 12권씩 꽂으면 책장은 몇 칸이 필요합니까?', a: '8칸' },
+  ],
+  e4: [
+    { q: '어느 공장에서 하루에 1,250개의 제품을 생산합니다. 15일 동안 생산하는 제품은 모두 몇 개입니까?', a: '18,750개' },
+    { q: '물통에 물이 2.5L 들어 있었는데 1.8L를 사용했습니다. 남은 물의 양은 몇 L입니까?', a: '0.7L' },
+    { q: '각도기로 잰 각이 35°인 각과 90°인 각이 있습니다. 두 각의 크기의 합은 몇 도입니까?', a: '125°' },
+    { q: '사탕 3,240개를 한 봉지에 40개씩 담으면 몇 봉지가 되고 몇 개가 남습니까?', a: '81봉지, 0개' },
+  ],
+  e5: [
+    { q: '우유 3/4L 중에서 1/3L를 마셨습니다. 남은 우유는 몇 L입니까?', a: '5/12L' },
+    { q: '가로 2.4m, 세로 1.5m인 직사각형 텃밭의 넓이는 몇 m²입니까?', a: '3.6m²' },
+    { q: '12와 18의 최대공약수와 최소공배수를 각각 구하세요.', a: '최대공약수 6, 최소공배수 36' },
+    { q: '리본 5/6m 중에서 친구에게 1/2m를 주었습니다. 남은 리본은 몇 m입니까?', a: '1/3m' },
+  ],
+  e6: [
+    { q: '쌀 5/8kg을 2등분하면 한 봉지에 몇 kg씩 담게 됩니까?', a: '5/16kg' },
+    { q: '휘발유 12.6L로 자동차가 90.72km를 달렸습니다. 1L로 몇 km를 달린 셈입니까?', a: '7.2km' },
+    { q: '남학생과 여학생의 비가 3:2이고 전체 학생이 40명일 때 남학생은 몇 명입니까?', a: '24명' },
+    { q: '반지름이 7cm인 원의 넓이를 구하세요. (원주율 3.14 사용)', a: '153.86cm²' },
+  ],
+  m1: [
+    { q: '어떤 수에 5를 더한 후 3을 곱했더니 24가 되었습니다. 어떤 수를 구하세요.', a: '3' },
+    { q: '영하 7도였던 기온이 12도 올랐습니다. 현재 기온은 몇 도입니까?', a: '5도' },
+    { q: '한 변의 길이가 (x+2)cm인 정사각형의 둘레를 x에 대한 식으로 나타내세요.', a: '4x+8 (cm)' },
+    { q: '형이 동생보다 5살 많고 두 사람 나이의 합이 27살입니다. 동생의 나이를 구하세요.', a: '11살' },
+  ],
+  m2: [
+    { q: '두 자연수의 합이 15이고 차가 3일 때 두 수를 구하세요.', a: '9와 6' },
+    { q: '시속 4km로 걷는 사람과 시속 6km로 걷는 사람이 같은 지점에서 반대 방향으로 동시에 출발했습니다. 2시간 후 두 사람 사이의 거리를 구하세요.', a: '20km' },
+    { q: '일차함수 y=2x-3의 그래프가 x축과 만나는 점의 좌표를 구하세요.', a: '(3/2, 0)' },
+    { q: '주사위 하나를 던질 때 짝수의 눈이 나올 확률을 구하세요.', a: '1/2' },
+  ],
+  m3: [
+    { q: '가로가 세로보다 3cm 긴 직사각형의 넓이가 40cm²일 때 세로의 길이를 구하세요.', a: '5cm' },
+    { q: '이차방정식 x²-5x+6=0의 두 근의 합과 곱을 각각 구하세요.', a: '합 5, 곱 6' },
+    { q: '사다리를 벽에 기대어 놓았더니 벽에서 바닥까지의 높이가 12m, 사다리 밑과 벽 사이의 거리가 5m였습니다. 사다리의 길이를 구하세요.', a: '13m' },
+    { q: '이차함수 y=x²-4x+3의 꼭짓점의 좌표를 구하세요.', a: '(2, -1)' },
+  ],
+  h1: [
+    { q: '다항식 (x+3)²-(x-3)² 을 간단히 하세요.', a: '12x' },
+    { q: '이차부등식 x²-x-6>0 의 해를 구하세요.', a: 'x<-2 또는 x>3' },
+    { q: '함수 f(x)=3x-2 에서 f(4)의 값을 구하세요.', a: '10' },
+    { q: '이차방정식 2x²-3x-2=0 의 해를 구하세요.', a: 'x=2 또는 x=-1/2' },
+  ],
+  h2: [
+    { q: 'log₂ 8 + log₂ 4 의 값을 구하세요.', a: '5' },
+    { q: 'sin30° + cos60° 의 값을 구하세요.', a: '1' },
+    { q: '첫째항이 3, 공차가 4인 등차수열의 첫 10항의 합을 구하세요.', a: '210' },
+    { q: '함수 f(x)=x³-3x 의 도함수 f\'(x)를 구하세요.', a: '3x²-3' },
+  ],
+  h3: [
+    { q: '함수 f(x)=x³-3x²+2 의 극댓값을 구하세요.', a: '2 (x=0에서)' },
+    { q: '정적분 ∫₀² 3x² dx 의 값을 구하세요.', a: '8' },
+    { q: '서로 다른 5개의 문자를 일렬로 나열하는 경우의 수를 구하세요.', a: '120' },
+    { q: '동전을 3번 던질 때 앞면이 2번 나올 확률을 구하세요.', a: '3/8' },
+  ],
+};
+
+function findGrade(gradeId) {
+  for (const g of CURRICULUM) {
+    const found = g.grades.find((x) => x.id === gradeId);
+    if (found) return found;
+  }
+  return null;
+}
+
+function findGroup(gradeId) {
+  for (const g of CURRICULUM) {
+    if (g.grades.some((x) => x.id === gradeId)) return g.group;
+  }
+  return null;
+}
+
+const DIFF_LABEL = { easy: '하', medium: '중', hard: '상' };
+const PROBLEMS_PER_PAGE = 8;
+const SAVE_KEY = 'mathWorksheetSaved';
+
+const gradeSelect = document.getElementById('gradeSelect');
+const topicList = document.getElementById('topicList');
+const customCountModeCb = document.getElementById('customCountMode');
+const fontSizeSelect = document.getElementById('fontSizeSelect');
+const difficultyField = document.getElementById('difficultyField');
+const difficultyRadios = document.querySelectorAll('input[name="difficulty"]');
+const countModeField = document.getElementById('countModeField');
+const countInput = document.getElementById('countInput');
+const includeAnswersCb = document.getElementById('includeAnswers');
+const previewAnswersCb = document.getElementById('previewAnswers');
+const examModeCb = document.getElementById('examMode');
+const typeModeRadios = document.querySelectorAll('input[name="typeMode"]');
+const typeChoiceCb = document.getElementById('typeChoice');
+const typeEssayCb = document.getElementById('typeEssay');
+const typeManualField = document.getElementById('typeManualField');
+const mcPercentInput = document.getElementById('mcPercent');
+const essayPercentInput = document.getElementById('essayPercent');
+const generateBtn = document.getElementById('generateBtn');
+const printBtn = document.getElementById('printBtn');
+const saveBtn = document.getElementById('saveBtn');
+const pagePanel = document.getElementById('pagePanel');
+const pageSectionInput = document.getElementById('pageSectionInput');
+const generatePagesBtn = document.getElementById('generatePagesBtn');
+const savedList = document.getElementById('savedList');
+const loadSavedBtn = document.getElementById('loadSavedBtn');
+const deleteSavedBtn = document.getElementById('deleteSavedBtn');
+const emptyState = document.getElementById('emptyState');
+const worksheetSection = document.getElementById('worksheetSection');
+const worksheetTitle = document.getElementById('worksheetTitle');
+const worksheetMeta = document.getElementById('worksheetMeta');
+const problemList = document.getElementById('problemList');
+const answerSheet = document.getElementById('answerSheet');
+const answerList = document.getElementById('answerList');
+const answerGradeLabel = document.getElementById('answerGradeLabel');
+const coverBadge = document.getElementById('coverBadge');
+const coverTitle = document.getElementById('coverTitle');
+const coverSubtitle = document.getElementById('coverSubtitle');
+const coverFooter = document.getElementById('coverFooter');
+
+const THEME_CLASSES = ['theme-elementary', 'theme-middle', 'theme-high'];
+const THEME_BY_GROUP = { '초등학교': 'theme-elementary', '중학교': 'theme-middle', '고등학교': 'theme-high' };
+
+function applyTheme(groupLabel) {
+  document.body.classList.remove(...THEME_CLASSES);
+  const cls = THEME_BY_GROUP[groupLabel];
+  if (cls) document.body.classList.add(cls);
+}
+
+let currentProblems = []; // { q, a }
+let currentGroupLabel = '';
+
+function populateGradeSelect() {
+  CURRICULUM.forEach((group) => {
+    const optgroup = document.createElement('optgroup');
+    optgroup.label = group.group;
+    group.grades.forEach((g) => {
+      const opt = document.createElement('option');
+      opt.value = g.id;
+      opt.textContent = g.label;
+      optgroup.appendChild(opt);
+    });
+    gradeSelect.appendChild(optgroup);
+  });
+}
+
+function populateTopics(gradeId) {
+  topicList.innerHTML = '';
+  const grade = findGrade(gradeId);
+  if (!grade) return;
+  grade.topics.forEach((topic) => {
+    const id = `topic_${topic.id}`;
+    const label = document.createElement('label');
+    label.className = 'topic-item';
+    label.innerHTML = `<input type="checkbox" id="${id}" data-topic="${topic.id}" checked> <span>${topic.label}</span><input type="number" class="topic-count hidden" data-count-for="${topic.id}" value="4" min="0" max="30">`;
+    topicList.appendChild(label);
+  });
+  if (WORD_BANK[gradeId] && WORD_BANK[gradeId].length) {
+    const label = document.createElement('label');
+    label.className = 'topic-item word-item';
+    label.innerHTML = `<input type="checkbox" id="topic_word" data-word="1" checked> <span>문장제(응용) 문제</span><input type="number" class="topic-count hidden" data-count-for="__word__" value="4" min="0" max="30">`;
+    topicList.appendChild(label);
+  }
+  topicList.querySelectorAll('.topic-count').forEach((el) => el.classList.toggle('hidden', !customCountModeCb.checked));
+}
+
+function wordGenFactory(gradeId) {
+  let queue = shuffle(WORD_BANK[gradeId] || []);
+  let idx = 0;
+  return () => {
+    if (idx >= queue.length) { queue = shuffle(WORD_BANK[gradeId] || []); idx = 0; }
+    const item = queue[idx++];
+    return { q: item.q, a: item.a };
+  };
+}
+
+function pickWeightedDifficulty() {
+  const r = Math.random();
+  if (r < 0.2) return 'easy';
+  if (r < 0.7) return 'medium';
+  return 'hard';
+}
+
+function generateUnique(genFn, count) {
+  const out = [];
+  const seen = new Set();
+  let guard = 0;
+  while (out.length < count && guard < count * 8) {
+    guard++;
+    const p = genFn();
+    const key = p.q;
+    if (seen.has(key) && guard < count * 6) continue;
+    seen.add(key);
+    out.push(p);
+  }
+  return out;
+}
+
+function distribute(total, n) {
+  const base = Math.floor(total / n);
+  const extra = total % n;
+  return Array.from({ length: n }, (_, i) => base + (i < extra ? 1 : 0));
+}
+
+function chunk(arr, size) {
+  const out = [];
+  for (let i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size));
+  return out;
+}
+
+function stripHtml(str) {
+  return str.replace(/<[^>]+>/g, '');
+}
+
+// Best-effort multiple-choice distractors for plain "number [+ short unit]" answers
+// (e.g. "9", "35°", "24cm²"). Anything with HTML (fractions), commas, multiple
+// numbers, or a long/complex suffix is left as a subjective answer.
+function extractDistractors(answerHtml) {
+  if (/<[^>]+>/.test(answerHtml)) return null;
+  const trimmed = answerHtml.trim();
+  if (trimmed === '>' || trimmed === '<' || trimmed === '=') {
+    return ['>', '<', '='].filter((s) => s !== trimmed);
+  }
+  const m = trimmed.match(/^(-?\d+(?:\.\d+)?)(.*)$/);
+  if (!m) return null;
+  const suffix = m[2] || '';
+  if (/\d/.test(suffix) || suffix.length > 6) return null;
+  const num = parseFloat(m[1]);
+  const isInt = Number.isInteger(num);
+  const magnitude = Math.max(1, Math.round(Math.abs(num) * 0.15));
+  const deltaPool = shuffle([1, -1, 2, -2, magnitude, -magnitude, magnitude * 2, -magnitude * 2]);
+  const seen = new Set([num]);
+  const out = [];
+  for (const d of deltaPool) {
+    if (out.length >= 3) break;
+    const cand = isInt ? num + d : Number((num + d).toFixed(2));
+    if (!seen.has(cand)) { seen.add(cand); out.push(`${cand}${suffix}`); }
+  }
+  return out.length >= 3 ? out : null;
+}
+
+function currentTypeSettings() {
+  const mode = document.querySelector('input[name="typeMode"]:checked').value;
+  const choiceOn = typeChoiceCb.checked;
+  const essayOn = typeEssayCb.checked;
+  let mcPct = 0;
+  let essayPct = 0;
+  if (mode === 'auto') {
+    const weights = { subjective: 0.65, choice: choiceOn ? 0.25 : 0, essay: essayOn ? 0.1 : 0 };
+    const sum = weights.subjective + weights.choice + weights.essay;
+    mcPct = (weights.choice / sum) * 100;
+    essayPct = (weights.essay / sum) * 100;
+  } else {
+    mcPct = choiceOn ? clampPct(mcPercentInput.value) : 0;
+    essayPct = essayOn ? clampPct(essayPercentInput.value) : 0;
+    if (mcPct + essayPct > 100) {
+      const scale = 100 / (mcPct + essayPct);
+      mcPct *= scale;
+      essayPct *= scale;
+    }
+  }
+  return { mcPct, essayPct };
+}
+
+function clampPct(v) {
+  let n = parseFloat(v);
+  if (Number.isNaN(n)) n = 0;
+  return Math.max(0, Math.min(100, n));
+}
+
+// Assigns 'choice' / 'essay' / 'subjective' to each problem, respecting the
+// requested ratio as closely as possible (multiple-choice only where the
+// answer can be turned into plausible distractors).
+function assignTypes(problems) {
+  const { mcPct, essayPct } = currentTypeSettings();
+  const total = problems.length;
+  let mcTarget = Math.round((total * mcPct) / 100);
+  let essayTarget = Math.round((total * essayPct) / 100);
+  if (mcTarget + essayTarget > total) essayTarget = Math.max(0, total - mcTarget);
+
+  const order = shuffle(problems.map((_, i) => i));
+  const type = new Array(total).fill('subjective');
+  const choiceData = new Array(total).fill(null);
+
+  if (mcTarget > 0) {
+    let assigned = 0;
+    for (const i of order) {
+      if (assigned >= mcTarget) break;
+      const distractors = extractDistractors(problems[i].a);
+      if (!distractors) continue;
+      type[i] = 'choice';
+      choiceData[i] = distractors;
+      assigned++;
+    }
+  }
+  if (essayTarget > 0) {
+    let assigned = 0;
+    for (const i of order) {
+      if (assigned >= essayTarget) break;
+      if (type[i] !== 'subjective') continue;
+      type[i] = 'essay';
+      assigned++;
+    }
+  }
+
+  return problems.map((p, i) => {
+    if (type[i] === 'choice') {
+      const opts = shuffle([p.a, ...choiceData[i]]);
+      return { ...p, type: 'choice', choices: opts, correctIdx: opts.indexOf(p.a) };
+    }
+    if (type[i] === 'essay') return { ...p, type: 'essay' };
+    return { ...p, type: 'subjective' };
+  });
+}
+
+const CHOICE_MARKS = ['①', '②', '③', '④'];
+
+function renderProblemHtml(p, num) {
+  const wide = p.type !== 'subjective' || stripHtml(p.q).length > 20;
+  const cls = `problem${wide ? ' problem-wide' : ''}`;
+  if (p.type === 'choice') {
+    const choicesHtml = p.choices.map((c, i) => `<span class="choice">${CHOICE_MARKS[i]} ${c}</span>`).join('');
+    return `<div class="${cls}"><span class="num">${num}.</span><div class="qblock"><span class="qtext">${p.q}</span><div class="choices">${choicesHtml}</div></div></div>`;
+  }
+  if (p.type === 'essay') {
+    return `<div class="${cls}"><span class="num">${num}.</span><div class="qblock"><span class="qtext">${p.q} <span class="essay-tag">(풀이 과정과 답을 쓰세요)</span></span><div class="essay-lines"></div></div></div>`;
+  }
+  return `<div class="${cls}"><span class="num">${num}.</span><span class="qtext">${p.q}</span></div>`;
+}
+
+function buildSources(grade, gradeId, examMode, diff) {
+  const topicChecks = topicList.querySelectorAll('input[data-topic]:checked');
+  const wordCheck = topicList.querySelector('input[data-word]:checked');
+  const sources = [];
+  topicChecks.forEach((cb) => {
+    const topic = grade.topics.find((t) => t.id === cb.dataset.topic);
+    if (topic) {
+      sources.push({
+        label: topic.label,
+        topicId: topic.id,
+        gen: () => topic.gen(examMode ? pickWeightedDifficulty() : diff),
+      });
+    }
+  });
+  if (wordCheck) {
+    sources.push({ label: '문장제(응용) 문제', topicId: '__word__', gen: wordGenFactory(gradeId) });
+  }
+  return sources;
+}
+
+function resolveCount() {
+  let count = parseInt(countInput.value, 10);
+  if (Number.isNaN(count)) count = 20;
+  count = Math.max(6, Math.min(80, count));
+  countInput.value = count;
+  return count;
+}
+
+function renderWorksheet(problems, titleText, metaText, answerTitleText, groupLabel) {
+  currentProblems = problems;
+  currentGroupLabel = groupLabel || currentGroupLabel;
+  applyTheme(currentGroupLabel);
+
+  worksheetTitle.textContent = titleText;
+  worksheetMeta.textContent = metaText;
+  answerGradeLabel.textContent = answerTitleText;
+
+  coverBadge.textContent = currentGroupLabel || '수학';
+  coverTitle.textContent = titleText;
+  coverSubtitle.textContent = metaText;
+  coverFooter.textContent = `생성일: ${new Date().toLocaleDateString('ko-KR')}`;
+
+  const pages = chunk(problems, PROBLEMS_PER_PAGE);
+  problemList.innerHTML = pages
+    .map((pageProblems, pIdx) => {
+      const isLast = pIdx === pages.length - 1;
+      const items = pageProblems
+        .map((p, i) => renderProblemHtml(p, pIdx * PROBLEMS_PER_PAGE + i + 1))
+        .join('');
+      return `<div class="problem-grid problem-page${isLast ? '' : ' page-break'}">${items}</div>`;
+    })
+    .join('');
+
+  answerList.innerHTML = problems
+    .map((p, i) => `<span class="ans-item"><b>${i + 1}.</b> ${p.type === 'choice' ? CHOICE_MARKS[p.correctIdx] : p.a}</span>`)
+    .join('');
+
+  emptyState.classList.add('hidden');
+  worksheetSection.classList.remove('hidden');
+  worksheetSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function finalizeAndRender(grade, sources, counts, examMode, diff, extraNote, groupLabel) {
+  let problems = [];
+  sources.forEach((src, i) => {
+    if (counts[i] <= 0) return;
+    problems = problems.concat(generateUnique(src.gen, counts[i]));
+  });
+  problems = shuffle(problems);
+
+  if (problems.length === 0) {
+    alert('생성된 문제가 없습니다. 단원별 문항 수를 확인해주세요.');
+    return;
+  }
+
+  problems = assignTypes(problems);
+
+  const topicLabels = sources.filter((s, i) => counts[i] > 0).map((s) => s.label).join(', ');
+  const perScore = Math.floor(100 / problems.length);
+  const noteSuffix = extraNote ? `  |  ${extraNote}` : '';
+
+  if (examMode) {
+    renderWorksheet(
+      problems,
+      `${grade.label} 수학 실전 대비 모의고사`,
+      `단원: ${topicLabels}  |  시험 시간: 40분  |  총점: 100점 (문항당 ${perScore}점)  |  문제 수: ${problems.length}문항${noteSuffix}`,
+      `${grade.label} 수학 실전 대비 모의고사 - 정답지`,
+      groupLabel
+    );
+  } else {
+    renderWorksheet(
+      problems,
+      `${grade.label} 수학 문제집`,
+      `단원: ${topicLabels}  |  난이도: ${DIFF_LABEL[diff]}  |  문제 수: ${problems.length}문항${noteSuffix}`,
+      `${grade.label} 수학 문제집 - 정답지 (난이도: ${DIFF_LABEL[diff]})`,
+      groupLabel
+    );
+  }
+}
+
+function onGenerate() {
+  const gradeId = gradeSelect.value;
+  const grade = findGrade(gradeId);
+  if (!grade) return;
+  const examMode = examModeCb.checked;
+  const diff = document.querySelector('input[name="difficulty"]:checked').value;
+
+  const sources = buildSources(grade, gradeId, examMode, diff);
+  if (sources.length === 0) {
+    alert('최소 하나 이상의 단원을 선택해주세요.');
+    return;
+  }
+
+  let counts;
+  if (customCountModeCb.checked) {
+    counts = sources.map((s) => {
+      const input = topicList.querySelector(`.topic-count[data-count-for="${s.topicId}"]`);
+      let v = input ? parseInt(input.value, 10) : 0;
+      if (Number.isNaN(v)) v = 0;
+      return Math.max(0, Math.min(30, v));
+    });
+    if (counts.reduce((a, b) => a + b, 0) === 0) {
+      alert('단원별 문항 수를 1개 이상 입력해주세요.');
+      return;
+    }
+  } else {
+    const count = resolveCount();
+    counts = distribute(count, sources.length);
+  }
+
+  finalizeAndRender(grade, sources, counts, examMode, diff, undefined, findGroup(gradeId));
+}
+
+function onGeneratePages() {
+  if (customCountModeCb.checked) {
+    alert('"단원별 문항 수 직접 지정"을 끄면 페이지 수로 생성할 수 있어요.');
+    return;
+  }
+  const gradeId = gradeSelect.value;
+  const grade = findGrade(gradeId);
+  if (!grade) return;
+  const examMode = examModeCb.checked;
+  const diff = document.querySelector('input[name="difficulty"]:checked').value;
+
+  const sources = buildSources(grade, gradeId, examMode, diff);
+  if (sources.length === 0) {
+    alert('최소 하나 이상의 단원을 선택해주세요.');
+    return;
+  }
+
+  let pages = parseInt(pageSectionInput.value, 10);
+  if (Number.isNaN(pages)) pages = 2;
+  pages = Math.max(1, Math.min(8, pages));
+  pageSectionInput.value = pages;
+  const count = pages * PROBLEMS_PER_PAGE;
+  const counts = distribute(count, sources.length);
+
+  finalizeAndRender(grade, sources, counts, examMode, diff, `약 ${pages}페이지 분량`, findGroup(gradeId));
+}
+
+function getSaved() {
+  try {
+    return JSON.parse(localStorage.getItem(SAVE_KEY)) || [];
+  } catch {
+    return [];
+  }
+}
+function setSaved(list) {
+  localStorage.setItem(SAVE_KEY, JSON.stringify(list));
+}
+function refreshSavedList() {
+  const list = getSaved();
+  if (!list.length) {
+    savedList.innerHTML = '<option value="">저장된 문제집이 없습니다</option>';
+    return;
+  }
+  savedList.innerHTML = list
+    .map((item) => `<option value="${item.id}">${item.savedAt} · ${item.title} (${item.problems.length}문항)</option>`)
+    .join('');
+}
+function onSave() {
+  if (!currentProblems.length) {
+    alert('먼저 문제집을 생성해주세요.');
+    return;
+  }
+  const list = getSaved();
+  const entry = {
+    id: String(Date.now()),
+    savedAt: new Date().toLocaleString('ko-KR', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }),
+    title: worksheetTitle.textContent,
+    meta: worksheetMeta.textContent,
+    answerTitle: answerGradeLabel.textContent,
+    groupLabel: currentGroupLabel,
+    problems: currentProblems.map((p) => ({ q: p.q, a: p.a, type: p.type, choices: p.choices, correctIdx: p.correctIdx })),
+  };
+  list.unshift(entry);
+  if (list.length > 20) list.length = 20;
+  setSaved(list);
+  refreshSavedList();
+  savedList.value = entry.id;
+  alert('문제집을 저장했어요. "저장된 문제집 불러오기"에서 언제든 다시 불러올 수 있어요.');
+}
+function onLoadSaved() {
+  const id = savedList.value;
+  if (!id) return;
+  const entry = getSaved().find((e) => e.id === id);
+  if (!entry) return;
+  renderWorksheet(entry.problems, entry.title, entry.meta, entry.answerTitle, entry.groupLabel || currentGroupLabel);
+}
+function onDeleteSaved() {
+  const id = savedList.value;
+  if (!id) return;
+  setSaved(getSaved().filter((e) => e.id !== id));
+  refreshSavedList();
+}
+
+function syncPrintAnswerClass() {
+  document.body.classList.toggle('include-answers', includeAnswersCb.checked);
+}
+function syncPreviewAnswerClass() {
+  document.body.classList.toggle('show-answers-preview', previewAnswersCb.checked);
+}
+function syncExamMode() {
+  const on = examModeCb.checked;
+  document.body.classList.toggle('exam-mode', on);
+  difficultyRadios.forEach((r) => { r.disabled = on; });
+  difficultyField.classList.toggle('disabled-field', on);
+}
+function syncCustomCountMode() {
+  const on = customCountModeCb.checked;
+  topicList.querySelectorAll('.topic-count').forEach((el) => el.classList.toggle('hidden', !on));
+  countModeField.classList.toggle('disabled-field', on);
+  countInput.disabled = on;
+  pagePanel.classList.toggle('disabled-field', on);
+  generatePagesBtn.disabled = on;
+}
+function syncTypeMode() {
+  const manual = document.querySelector('input[name="typeMode"]:checked').value === 'manual';
+  typeManualField.classList.toggle('hidden', !manual);
+  mcPercentInput.disabled = !manual || !typeChoiceCb.checked;
+  essayPercentInput.disabled = !manual || !typeEssayCb.checked;
+}
+function syncFontSize() {
+  document.body.classList.remove('font-large', 'font-xlarge');
+  if (fontSizeSelect.value === 'large') document.body.classList.add('font-large');
+  if (fontSizeSelect.value === 'xlarge') document.body.classList.add('font-xlarge');
+}
+
+gradeSelect.addEventListener('change', () => {
+  populateTopics(gradeSelect.value);
+  applyTheme(findGroup(gradeSelect.value));
+});
+generateBtn.addEventListener('click', onGenerate);
+generatePagesBtn.addEventListener('click', onGeneratePages);
+printBtn.addEventListener('click', () => window.print());
+saveBtn.addEventListener('click', onSave);
+loadSavedBtn.addEventListener('click', onLoadSaved);
+deleteSavedBtn.addEventListener('click', onDeleteSaved);
+includeAnswersCb.addEventListener('change', syncPrintAnswerClass);
+previewAnswersCb.addEventListener('change', syncPreviewAnswerClass);
+examModeCb.addEventListener('change', syncExamMode);
+customCountModeCb.addEventListener('change', syncCustomCountMode);
+fontSizeSelect.addEventListener('change', syncFontSize);
+typeModeRadios.forEach((r) => r.addEventListener('change', syncTypeMode));
+typeChoiceCb.addEventListener('change', syncTypeMode);
+typeEssayCb.addEventListener('change', syncTypeMode);
+
+populateGradeSelect();
+gradeSelect.value = 'e1';
+populateTopics('e1');
+applyTheme(findGroup('e1'));
+syncPrintAnswerClass();
+syncPreviewAnswerClass();
+syncExamMode();
+syncFontSize();
+syncTypeMode();
+refreshSavedList();
+</script>
+</body>
+</html>
