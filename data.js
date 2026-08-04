@@ -23,6 +23,79 @@ function frac(n, d) {
 }
 function sgnTerm(v) { return `${v >= 0 ? '+' : '-'} ${Math.abs(v)}`; }
 
+// ---------- diagram (schematic, not to scale) ----------
+function svgWrap(inner, w, h) {
+  return `<svg class="prob-diagram" viewBox="0 0 ${w} ${h}" width="${w}" height="${h}" xmlns="http://www.w3.org/2000/svg">${inner}</svg>`;
+}
+function svgCircleDiagram(label, isRadius) {
+  const inner = `
+    <circle cx="50" cy="50" r="34" fill="none" stroke="currentColor" stroke-width="2"/>
+    <circle cx="50" cy="50" r="2" fill="currentColor"/>
+    ${isRadius
+      ? `<line x1="50" y1="50" x2="84" y2="50" stroke="currentColor" stroke-width="1.5"/><text x="58" y="46" font-size="11">${label}</text>`
+      : `<line x1="16" y1="50" x2="84" y2="50" stroke="currentColor" stroke-width="1.5"/><text x="35" y="46" font-size="11">${label}</text>`}
+  `;
+  return svgWrap(inner, 100, 100);
+}
+function svgRightTriangle(labelA, labelB, labelC) {
+  const inner = `
+    <polygon points="12,68 88,68 12,12" fill="none" stroke="currentColor" stroke-width="2"/>
+    <rect x="12" y="60" width="8" height="8" fill="none" stroke="currentColor" stroke-width="1"/>
+    <text x="50" y="82" font-size="11" text-anchor="middle">${labelA}</text>
+    <text x="2" y="42" font-size="11">${labelB}</text>
+    <text x="52" y="36" font-size="11">${labelC}</text>
+  `;
+  return svgWrap(inner, 100, 90);
+}
+function svgBox(l, w, h) {
+  const inner = `
+    <polygon points="10,55 45,70 90,55 90,20 55,8 10,20" fill="none" stroke="currentColor" stroke-width="1.6"/>
+    <line x1="10" y1="20" x2="10" y2="55" stroke="currentColor" stroke-width="1.6"/>
+    <line x1="55" y1="8" x2="55" y2="38" stroke="currentColor" stroke-width="1.6"/>
+    <line x1="55" y1="38" x2="90" y2="20" stroke="currentColor" stroke-width="1.6" stroke-dasharray="3,2"/>
+    <line x1="55" y1="38" x2="45" y2="70" stroke="currentColor" stroke-width="1.6" stroke-dasharray="3,2"/>
+    <text x="26" y="42" font-size="10">${w}</text>
+    <text x="60" y="60" font-size="10">${l}</text>
+    <text x="58" y="20" font-size="10">${h}</text>
+  `;
+  return svgWrap(inner, 100, 80);
+}
+function svgTriangleArea(base, height) {
+  const inner = `
+    <polygon points="10,65 90,65 40,10" fill="none" stroke="currentColor" stroke-width="2"/>
+    <line x1="40" y1="65" x2="40" y2="10" stroke="currentColor" stroke-width="1.2" stroke-dasharray="3,2"/>
+    <rect x="36" y="59" width="6" height="6" fill="none" stroke="currentColor" stroke-width="1"/>
+    <text x="50" y="80" font-size="11" text-anchor="middle">${base}</text>
+    <text x="44" y="38" font-size="11">${height}</text>
+  `;
+  return svgWrap(inner, 100, 88);
+}
+function svgParallelogramArea(base, height) {
+  const inner = `
+    <polygon points="20,65 90,65 70,10 5,10" fill="none" stroke="currentColor" stroke-width="2"/>
+    <line x1="70" y1="65" x2="70" y2="10" stroke="currentColor" stroke-width="1.2" stroke-dasharray="3,2"/>
+    <rect x="66" y="59" width="6" height="6" fill="none" stroke="currentColor" stroke-width="1"/>
+    <text x="55" y="80" font-size="11" text-anchor="middle">${base}</text>
+    <text x="74" y="38" font-size="11">${height}</text>
+  `;
+  return svgWrap(inner, 100, 88);
+}
+function svgCoordPlane(x, y) {
+  const cx = 50, cy = 50, scale = 3.4;
+  const px = cx + x * scale, py = cy - y * scale;
+  const inner = `
+    <line x1="6" y1="50" x2="94" y2="50" stroke="currentColor" stroke-width="1.2"/>
+    <line x1="50" y1="6" x2="50" y2="94" stroke="currentColor" stroke-width="1.2"/>
+    <text x="88" y="47" font-size="9">x</text>
+    <text x="53" y="14" font-size="9">y</text>
+    <line x1="${px}" y1="${py}" x2="${px}" y2="50" stroke="currentColor" stroke-width="1" stroke-dasharray="2,2"/>
+    <line x1="${px}" y1="${py}" x2="50" y2="${py}" stroke="currentColor" stroke-width="1" stroke-dasharray="2,2"/>
+    <circle cx="${px}" cy="${py}" r="3" fill="currentColor"/>
+    <text x="${px + 5}" y="${py - 5}" font-size="10">(${x}, ${y})</text>
+  `;
+  return svgWrap(inner, 100, 100);
+}
+
 // ---------- grade 1 (초1) ----------
 function addSub1Digit(diff) {
   let a = randInt(0, 9), b = randInt(0, 9);
@@ -121,9 +194,9 @@ function timeCalcE3(diff) {
 }
 function circleBasic(diff) {
   const r = randInt(2, diff === 'easy' ? 10 : 30);
-  if (Math.random() < 0.5) return { q: `반지름이 ${r}cm인 원의 지름을 구하세요.`, a: `${r * 2}cm` };
+  if (Math.random() < 0.5) return { q: `반지름이 ${r}cm인 원의 지름을 구하세요.`, a: `${r * 2}cm`, svg: svgCircleDiagram(`${r}cm`, true) };
   const d = r * 2;
-  return { q: `지름이 ${d}cm인 원의 반지름을 구하세요.`, a: `${r}cm` };
+  return { q: `지름이 ${d}cm인 원의 반지름을 구하세요.`, a: `${r}cm`, svg: svgCircleDiagram(`${d}cm`, false) };
 }
 
 // ---------- grade 4 (초4) ----------
@@ -210,8 +283,8 @@ function averageBasic(diff) {
 }
 function polygonArea(diff) {
   const b = randInt(3, diff === 'easy' ? 15 : 30), h = randInt(3, diff === 'easy' ? 15 : 30);
-  if (Math.random() < 0.5) return { q: `밑변이 ${b}cm, 높이가 ${h}cm인 삼각형의 넓이를 구하세요.`, a: `${(b * h) / 2}cm²` };
-  return { q: `밑변이 ${b}cm, 높이가 ${h}cm인 평행사변형의 넓이를 구하세요.`, a: `${b * h}cm²` };
+  if (Math.random() < 0.5) return { q: `밑변이 ${b}cm, 높이가 ${h}cm인 삼각형의 넓이를 구하세요.`, a: `${(b * h) / 2}cm²`, svg: svgTriangleArea(`${b}cm`, `${h}cm`) };
+  return { q: `밑변이 ${b}cm, 높이가 ${h}cm인 평행사변형의 넓이를 구하세요.`, a: `${b * h}cm²`, svg: svgParallelogramArea(`${b}cm`, `${h}cm`) };
 }
 
 // ---------- grade 6 (초6) ----------
@@ -242,7 +315,7 @@ function proportionEq(diff) {
 }
 function volumeBox(diff) {
   const l = randInt(2, diff === 'easy' ? 10 : 20), w = randInt(2, diff === 'easy' ? 10 : 20), h = randInt(2, diff === 'easy' ? 10 : 20);
-  return { q: `가로 ${l}cm, 세로 ${w}cm, 높이 ${h}cm인 직육면체의 부피를 구하세요.`, a: `${l * w * h}cm³` };
+  return { q: `가로 ${l}cm, 세로 ${w}cm, 높이 ${h}cm인 직육면체의 부피를 구하세요.`, a: `${l * w * h}cm³`, svg: svgBox(l, w, h) };
 }
 
 // ---------- 중1 ----------
@@ -271,7 +344,7 @@ function coordQuadrant(diff) {
   const x = randInt(-10, 10) || 1, y = randInt(-10, 10) || 1;
   let quad;
   if (x > 0 && y > 0) quad = 1; else if (x < 0 && y > 0) quad = 2; else if (x < 0 && y < 0) quad = 3; else quad = 4;
-  return { q: `점 (${x}, ${y})는 제 몇 사분면 위의 점입니까?`, a: `제${quad}사분면` };
+  return { q: `점 (${x}, ${y})는 제 몇 사분면 위의 점입니까?`, a: `제${quad}사분면`, svg: svgCoordPlane(x, y) };
 }
 function statsMean(diff) {
   const n = diff === 'easy' ? 4 : 5;
@@ -333,10 +406,11 @@ function quadraticEq(diff) {
 function pythagorean(diff) {
   const triples = [[3, 4, 5], [6, 8, 10], [5, 12, 13], [8, 15, 17], [9, 12, 15], [7, 24, 25], [20, 21, 29]];
   const [a, b, c] = randChoice(triples);
-  if (Math.random() < 0.6) return { q: `직각삼각형의 두 변의 길이가 ${a}, ${b}일 때 빗변의 길이를 구하세요.`, a: String(c) };
+  if (Math.random() < 0.6) return { q: `직각삼각형의 두 변의 길이가 ${a}, ${b}일 때 빗변의 길이를 구하세요.`, a: String(c), svg: svgRightTriangle(a, b, '?') };
   const missing = Math.random() < 0.5 ? a : b;
   const known = missing === a ? b : a;
-  return { q: `직각삼각형의 빗변이 ${c}, 다른 한 변이 ${known}일 때 나머지 한 변의 길이를 구하세요.`, a: String(missing) };
+  const svg = missing === a ? svgRightTriangle('?', known, c) : svgRightTriangle(known, '?', c);
+  return { q: `직각삼각형의 빗변이 ${c}, 다른 한 변이 ${known}일 때 나머지 한 변의 길이를 구하세요.`, a: String(missing), svg };
 }
 function squareRootCalc(diff) {
   const b = randChoice([2, 3, 5, 6, 7]);

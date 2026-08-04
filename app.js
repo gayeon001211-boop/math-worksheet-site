@@ -1,6 +1,9 @@
 const DIFF_LABEL = { easy: '하', medium: '중', hard: '상' };
-const PROBLEMS_PER_PAGE = 8;
 const SAVE_KEY = 'mathWorksheetSaved';
+
+function pageSizeForGroup(groupLabel) {
+  return groupLabel === '초등학교' ? 12 : 6;
+}
 
 const gradeSelect = document.getElementById('gradeSelect');
 const topicList = document.getElementById('topicList');
@@ -30,8 +33,6 @@ const loadSavedBtn = document.getElementById('loadSavedBtn');
 const deleteSavedBtn = document.getElementById('deleteSavedBtn');
 const emptyState = document.getElementById('emptyState');
 const worksheetSection = document.getElementById('worksheetSection');
-const worksheetTitle = document.getElementById('worksheetTitle');
-const worksheetMeta = document.getElementById('worksheetMeta');
 const problemList = document.getElementById('problemList');
 const answerSheet = document.getElementById('answerSheet');
 const answerList = document.getElementById('answerList');
@@ -39,6 +40,7 @@ const answerGradeLabel = document.getElementById('answerGradeLabel');
 const coverBadge = document.getElementById('coverBadge');
 const coverTitle = document.getElementById('coverTitle');
 const coverSubtitle = document.getElementById('coverSubtitle');
+const coverStats = document.getElementById('coverStats');
 const coverFooter = document.getElementById('coverFooter');
 
 const THEME_CLASSES = ['theme-elementary', 'theme-middle', 'theme-high'];
@@ -52,6 +54,8 @@ function applyTheme(groupLabel) {
 
 let currentProblems = []; // { q, a }
 let currentGroupLabel = '';
+let currentTitleText = '';
+let currentMetaText = '';
 
 function populateGradeSelect() {
   CURRICULUM.forEach((group) => {
@@ -239,16 +243,24 @@ function assignTypes(problems) {
 const CHOICE_MARKS = ['①', '②', '③', '④'];
 
 function renderProblemHtml(p, num) {
-  const wide = p.type !== 'subjective' || stripHtml(p.q).length > 20;
+  const hasExtra = p.type === 'choice' || p.type === 'essay' || !!p.svg;
+  const wide = hasExtra || stripHtml(p.q).length > 20;
   const cls = `problem${wide ? ' problem-wide' : ''}`;
+  const diffBadge = p.diff ? `<span class="diff-badge diff-${p.diff}">${DIFF_LABEL[p.diff]}</span>` : '';
+  const svgHtml = p.svg ? `<div class="diagram-wrap">${p.svg}</div>` : '';
+
+  let bodyHtml;
   if (p.type === 'choice') {
     const choicesHtml = p.choices.map((c, i) => `<span class="choice">${CHOICE_MARKS[i]} ${c}</span>`).join('');
-    return `<div class="${cls}"><span class="num">${num}.</span><div class="qblock"><span class="qtext">${p.q}</span><div class="choices">${choicesHtml}</div></div></div>`;
+    bodyHtml = `<div class="qblock"><span class="qtext">${p.q}</span>${svgHtml}<div class="choices">${choicesHtml}</div></div>`;
+  } else if (p.type === 'essay') {
+    bodyHtml = `<div class="qblock"><span class="qtext">${p.q} <span class="essay-tag">(풀이 과정과 답을 쓰세요)</span></span>${svgHtml}<div class="essay-lines"></div></div>`;
+  } else if (p.svg) {
+    bodyHtml = `<div class="qblock"><span class="qtext">${p.q}</span>${svgHtml}</div>`;
+  } else {
+    bodyHtml = `<span class="qtext">${p.q}</span>`;
   }
-  if (p.type === 'essay') {
-    return `<div class="${cls}"><span class="num">${num}.</span><div class="qblock"><span class="qtext">${p.q} <span class="essay-tag">(풀이 과정과 답을 쓰세요)</span></span><div class="essay-lines"></div></div></div>`;
-  }
-  return `<div class="${cls}"><span class="num">${num}.</span><span class="qtext">${p.q}</span></div>`;
+  return `<div class="${cls}"><span class="num">${diffBadge}${num}.</span>${bodyHtml}</div>`;
 }
 
 function buildSources(grade, gradeId, examMode, diff) {
@@ -261,12 +273,16 @@ function buildSources(grade, gradeId, examMode, diff) {
       sources.push({
         label: topic.label,
         topicId: topic.id,
-        gen: () => topic.gen(examMode ? pickWeightedDifficulty() : diff),
+        gen: () => {
+          const d = examMode ? pickWeightedDifficulty() : diff;
+          return { ...topic.gen(d), diff: d };
+        },
       });
     }
   });
   if (wordCheck) {
-    sources.push({ label: '문장제(응용) 문제', topicId: '__word__', gen: wordGenFactory(gradeId) });
+    const wordGen = wordGenFactory(gradeId);
+    sources.push({ label: '문장제(응용) 문제', topicId: '__word__', gen: () => ({ ...wordGen(), diff: null }) });
   }
   return sources;
 }
@@ -279,28 +295,55 @@ function resolveCount() {
   return count;
 }
 
+function pageHeaderHtml(titleText, metaText) {
+  return `
+    <div class="page-header">
+      <h2>${titleText}</h2>
+      <div class="page-header-meta">${metaText}</div>
+      <div class="page-header-student">
+        <span>이름: ________________</span>
+        <span class="exam-only">수험번호: ________________</span>
+        <span>날짜: ________________</span>
+        <span>점수: ________________</span>
+      </div>
+    </div>`;
+}
+
 function renderWorksheet(problems, titleText, metaText, answerTitleText, groupLabel) {
   currentProblems = problems;
+  currentTitleText = titleText;
+  currentMetaText = metaText;
   currentGroupLabel = groupLabel || currentGroupLabel;
   applyTheme(currentGroupLabel);
 
-  worksheetTitle.textContent = titleText;
-  worksheetMeta.textContent = metaText;
   answerGradeLabel.textContent = answerTitleText;
+
+  const pageSize = pageSizeForGroup(currentGroupLabel);
+  const pages = chunk(problems, pageSize);
+  const totalPages = pages.length;
 
   coverBadge.textContent = currentGroupLabel || '수학';
   coverTitle.textContent = titleText;
   coverSubtitle.textContent = metaText;
+  coverStats.innerHTML = [
+    `<span class="stat-chip">문제 수 ${problems.length}문항</span>`,
+    `<span class="stat-chip">${totalPages}페이지</span>`,
+    `<span class="stat-chip">페이지당 ${pageSize}문항</span>`,
+  ].join('');
   coverFooter.textContent = `생성일: ${new Date().toLocaleDateString('ko-KR')}`;
 
-  const pages = chunk(problems, PROBLEMS_PER_PAGE);
   problemList.innerHTML = pages
     .map((pageProblems, pIdx) => {
       const isLast = pIdx === pages.length - 1;
       const items = pageProblems
-        .map((p, i) => renderProblemHtml(p, pIdx * PROBLEMS_PER_PAGE + i + 1))
+        .map((p, i) => renderProblemHtml(p, pIdx * pageSize + i + 1))
         .join('');
-      return `<div class="problem-grid problem-page${isLast ? '' : ' page-break'}">${items}</div>`;
+      return `
+        <div class="sheet page-block${isLast ? '' : ' page-break'}">
+          ${pageHeaderHtml(titleText, metaText)}
+          <div class="problem-grid">${items}</div>
+          <div class="page-footer">${pIdx + 1} / ${totalPages}</div>
+        </div>`;
     })
     .join('');
 
@@ -405,7 +448,7 @@ function onGeneratePages() {
   if (Number.isNaN(pages)) pages = 2;
   pages = Math.max(1, Math.min(8, pages));
   pageSectionInput.value = pages;
-  const count = pages * PROBLEMS_PER_PAGE;
+  const count = pages * pageSizeForGroup(findGroup(gradeId));
   const counts = distribute(count, sources.length);
 
   finalizeAndRender(grade, sources, counts, examMode, diff, `약 ${pages}페이지 분량`, findGroup(gradeId));
@@ -440,11 +483,11 @@ function onSave() {
   const entry = {
     id: String(Date.now()),
     savedAt: new Date().toLocaleString('ko-KR', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }),
-    title: worksheetTitle.textContent,
-    meta: worksheetMeta.textContent,
+    title: currentTitleText,
+    meta: currentMetaText,
     answerTitle: answerGradeLabel.textContent,
     groupLabel: currentGroupLabel,
-    problems: currentProblems.map((p) => ({ q: p.q, a: p.a, type: p.type, choices: p.choices, correctIdx: p.correctIdx })),
+    problems: currentProblems.map((p) => ({ q: p.q, a: p.a, type: p.type, choices: p.choices, correctIdx: p.correctIdx, svg: p.svg, diff: p.diff })),
   };
   list.unshift(entry);
   if (list.length > 20) list.length = 20;

@@ -92,7 +92,7 @@
           <input type="number" id="pageSectionInput" value="2" min="1" max="8">
           <button id="generatePagesBtn" class="btn primary">이 페이지 수로 생성하기</button>
         </div>
-        <p class="hint">왼쪽에서 고른 학년·단원·난이도가 그대로 적용되고, 페이지당 약 8문항 기준으로 문항 수가 계산돼요.</p>
+        <p class="hint">왼쪽에서 고른 학년·단원·난이도가 그대로 적용돼요. 페이지당 문항 수는 초등 12문항, 중·고등 6문항 기준으로 계산돼요.</p>
       </div>
     </section>
 
@@ -117,6 +117,7 @@
         <span id="coverBadge" class="cover-badge"></span>
         <h1 id="coverTitle" class="cover-title"></h1>
         <p id="coverSubtitle" class="cover-subtitle"></p>
+        <div id="coverStats" class="cover-stats"></div>
         <div class="cover-divider"></div>
         <div class="cover-student">
           <div class="cover-field"><span>학교</span><i></i></div>
@@ -127,19 +128,7 @@
         <p id="coverFooter" class="cover-footer"></p>
       </div>
 
-      <div class="sheet">
-        <h2 id="worksheetTitle"></h2>
-        <div class="meta-row">
-          <p id="worksheetMeta" class="meta-text"></p>
-          <div class="student-info">
-            <span>이름: ________________</span>
-            <span class="exam-only">수험번호: ________________</span>
-            <span>날짜: ________________</span>
-            <span>점수: ________________</span>
-          </div>
-        </div>
-        <div id="problemList"></div>
-      </div>
+      <div id="problemList"></div>
 
       <div id="answerSheet" class="sheet answer-sheet">
         <h3 id="answerGradeLabel"></h3>
