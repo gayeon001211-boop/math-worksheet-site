@@ -47,18 +47,63 @@ function svgRightTriangle(labelA, labelB, labelC) {
   `;
   return svgWrap(inner, 100, 90);
 }
+// Real box net (전개도): a cross layout of the 6 faces, not a pseudo-3D sketch.
 function svgBox(l, w, h) {
+  const maxDim = Math.max(l, w, h);
+  const unit = 24 / maxDim;
+  const dim = (v) => Math.max(9, v * unit);
+  const L = dim(l), W = dim(w), H = dim(h);
+  const gap = 2, x0 = 4, y0 = 4;
+  const xLeft = x0, xFront = xLeft + W + gap, xRight = xFront + L + gap, xBack = xRight + W + gap;
+  const yMid = y0 + W + gap, yBottom = yMid + H + gap;
+  const rect = (x, y, rw, rh) => `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${rw.toFixed(1)}" height="${rh.toFixed(1)}" fill="none" stroke="currentColor" stroke-width="1.3"/>`;
   const inner = `
-    <polygon points="10,55 45,70 90,55 90,20 55,8 10,20" fill="none" stroke="currentColor" stroke-width="1.6"/>
-    <line x1="10" y1="20" x2="10" y2="55" stroke="currentColor" stroke-width="1.6"/>
-    <line x1="55" y1="8" x2="55" y2="38" stroke="currentColor" stroke-width="1.6"/>
-    <line x1="55" y1="38" x2="90" y2="20" stroke="currentColor" stroke-width="1.6" stroke-dasharray="3,2"/>
-    <line x1="55" y1="38" x2="45" y2="70" stroke="currentColor" stroke-width="1.6" stroke-dasharray="3,2"/>
-    <text x="26" y="42" font-size="10">${w}</text>
-    <text x="60" y="60" font-size="10">${l}</text>
-    <text x="58" y="20" font-size="10">${h}</text>
+    ${rect(xFront, y0, L, W)}
+    ${rect(xLeft, yMid, W, H)}
+    ${rect(xFront, yMid, L, H)}
+    ${rect(xRight, yMid, W, H)}
+    ${rect(xBack, yMid, L, H)}
+    ${rect(xFront, yBottom, L, W)}
+    <text x="${(xFront + L / 2).toFixed(1)}" y="${(yMid + H / 2 + 3).toFixed(1)}" font-size="8" text-anchor="middle">${l}</text>
+    <text x="${(xLeft + W / 2).toFixed(1)}" y="${(yMid + H / 2 + 3).toFixed(1)}" font-size="8" text-anchor="middle">${w}</text>
+    <text x="${(xFront + L / 2).toFixed(1)}" y="${(yMid - 3).toFixed(1)}" font-size="8" text-anchor="middle">${h}</text>
   `;
-  return svgWrap(inner, 100, 80);
+  return svgWrap(inner, xBack + L + 4, yBottom + W + 4);
+}
+// Two similar polygons drawn side by side with the given corresponding sides labeled.
+function svgSimilarTriangles(smallLabel, largeLabel, ratio) {
+  const hSmall = 30;
+  const hLarge = Math.min(hSmall * ratio, 62);
+  const bSmall = hSmall * 0.85;
+  const bLarge = bSmall * (hLarge / hSmall);
+  const y0 = 66, sx = 8;
+  const lx = sx + bSmall + 22;
+  const inner = `
+    <polygon points="${sx},${y0} ${(sx + bSmall).toFixed(1)},${y0} ${sx},${(y0 - hSmall).toFixed(1)}" fill="none" stroke="currentColor" stroke-width="1.7"/>
+    <rect x="${sx}" y="${(y0 - 7).toFixed(1)}" width="7" height="7" fill="none" stroke="currentColor" stroke-width="1"/>
+    <text x="${(sx + bSmall / 2).toFixed(1)}" y="${y0 + 12}" font-size="9" text-anchor="middle">${smallLabel}</text>
+    <polygon points="${lx.toFixed(1)},${y0} ${(lx + bLarge).toFixed(1)},${y0} ${lx.toFixed(1)},${(y0 - hLarge).toFixed(1)}" fill="none" stroke="currentColor" stroke-width="1.7"/>
+    <rect x="${lx.toFixed(1)}" y="${(y0 - 7).toFixed(1)}" width="7" height="7" fill="none" stroke="currentColor" stroke-width="1"/>
+    <text x="${(lx + bLarge / 2).toFixed(1)}" y="${y0 + 12}" font-size="9" text-anchor="middle">${largeLabel}</text>
+  `;
+  return svgWrap(inner, lx + bLarge + 10, 90);
+}
+// Regular n-gon inscribed in a circle of radius r.
+function svgInscribedPolygon(r, n) {
+  const cx = 52, cy = 52, R = 38;
+  const pts = Array.from({ length: n }, (_, i) => {
+    const angle = -Math.PI / 2 + i * ((2 * Math.PI) / n);
+    return [cx + R * Math.cos(angle), cy + R * Math.sin(angle)];
+  });
+  const ptsStr = pts.map((p) => `${p[0].toFixed(1)},${p[1].toFixed(1)}`).join(' ');
+  const midX = ((cx + pts[0][0]) / 2 + 5).toFixed(1), midY = ((cy + pts[0][1]) / 2).toFixed(1);
+  const inner = `
+    <circle cx="${cx}" cy="${cy}" r="${R}" fill="none" stroke="currentColor" stroke-width="1.2" opacity="0.55"/>
+    <polygon points="${ptsStr}" fill="none" stroke="currentColor" stroke-width="1.8"/>
+    <line x1="${cx}" y1="${cy}" x2="${pts[0][0].toFixed(1)}" y2="${pts[0][1].toFixed(1)}" stroke="currentColor" stroke-width="1" stroke-dasharray="2,2"/>
+    <text x="${midX}" y="${midY}" font-size="9">${r}</text>
+  `;
+  return svgWrap(inner, 104, 104);
 }
 function svgTriangleArea(base, height) {
   const inner = `
@@ -581,7 +626,22 @@ function squareRootCalc(diff) {
 function similarity(diff) {
   const ratio = randInt(2, diff === 'easy' ? 3 : 5);
   const side = randInt(2, diff === 'easy' ? 10 : 20);
-  return { q: `닮음비가 1:${ratio}인 두 도형이 있습니다. 작은 도형의 한 변이 ${side}cm일 때 큰 도형의 대응변의 길이를 구하세요.`, a: `${side * ratio}cm` };
+  return {
+    q: `닮음비가 1:${ratio}인 두 도형이 있습니다. 작은 도형의 한 변이 ${side}cm일 때 큰 도형의 대응변의 길이를 구하세요.`,
+    a: `${side * ratio}cm`,
+    svg: svgSimilarTriangles(`${side}cm`, `${side * ratio}cm`, ratio),
+  };
+}
+function regularPolygonInCircle(diff) {
+  const r = randInt(diff === 'easy' ? 4 : 6, diff === 'easy' ? 10 : 20);
+  const n = randChoice([3, 4, 6]);
+  const names = { 3: '정삼각형', 4: '정사각형', 6: '정육각형' };
+  const answers = { 3: `${r}√3`, 4: `${r}√2`, 6: `${r}` };
+  return {
+    q: `반지름이 ${r}cm인 원에 내접하는 ${names[n]}의 한 변의 길이를 구하세요.`,
+    a: `${answers[n]}cm`,
+    svg: svgInscribedPolygon(r, n),
+  };
 }
 
 // ---------- 고1 ----------
@@ -819,6 +879,7 @@ const CURRICULUM = [
         { id: 'pythagorean', label: '피타고라스 정리', gen: pythagorean },
         { id: 'square_root_calc', label: '제곱근의 계산', gen: squareRootCalc },
         { id: 'similarity', label: '도형의 닮음', gen: similarity },
+        { id: 'regular_polygon_circle', label: '원에 내접하는 정다각형', gen: regularPolygonInCircle },
       ] },
     ],
   },
