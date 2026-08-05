@@ -135,10 +135,6 @@ function chunk(arr, size) {
   return out;
 }
 
-function stripHtml(str) {
-  return str.replace(/<[^>]+>/g, '');
-}
-
 // Best-effort multiple-choice distractors for plain "number [+ short unit]" answers
 // (e.g. "9", "35°", "24cm²"). Anything with HTML (fractions), commas, multiple
 // numbers, or a long/complex suffix is left as a subjective answer.
@@ -243,9 +239,7 @@ function assignTypes(problems) {
 const CHOICE_MARKS = ['①', '②', '③', '④'];
 
 function renderProblemHtml(p, num) {
-  const hasExtra = p.type === 'choice' || p.type === 'essay' || !!p.svg;
-  const wide = hasExtra || stripHtml(p.q).length > 20;
-  const cls = `problem${wide ? ' problem-wide' : ''}`;
+  const cls = 'problem';
   const diffBadge = p.diff ? `<span class="diff-badge diff-${p.diff}">${DIFF_LABEL[p.diff]}</span>` : '';
   const svgHtml = p.svg ? `<div class="diagram-wrap">${p.svg}</div>` : '';
 

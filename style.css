@@ -245,7 +245,6 @@ body.exam-mode .exam-only { display: inline; }
   grid-template-columns: repeat(2, 1fr);
   gap: 30px 32px;
 }
-.problem-wide { grid-column: span 2; }
 
 .problem {
   display: flex;
@@ -330,7 +329,6 @@ body.show-answers-preview .answer-sheet { display: block; }
 
 @media (max-width: 640px) {
   .problem-grid { grid-template-columns: 1fr; }
-  .problem-wide { grid-column: span 1; }
 }
 
 @media print {
