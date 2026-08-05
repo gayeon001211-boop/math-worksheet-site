@@ -230,6 +230,19 @@ function htmlDataTable(headers, rows) {
   const tbody = rows.map((r) => `<tr>${r.map((cell) => `<td>${cell}</td>`).join('')}</tr>`).join('');
   return `<table class="prob-table"><thead>${thead}</thead><tbody>${tbody}</tbody></table>`;
 }
+function svgBallsDiagram(total, favorable) {
+  const cols = Math.min(total, 5);
+  const rows = Math.ceil(total / cols);
+  const r = 7, gap = 18, pad = 10;
+  let dots = '';
+  for (let i = 0; i < total; i++) {
+    const col = i % cols, row = Math.floor(i / cols);
+    const cx = pad + r + col * gap, cy = pad + r + row * gap;
+    const filled = i < favorable;
+    dots += `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${filled ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="1.3"/>`;
+  }
+  return svgWrap(dots, pad * 2 + cols * gap, pad * 2 + rows * gap);
+}
 
 // ---------- grade 1 (초1) ----------
 function addSub1Digit(diff) {
@@ -499,7 +512,12 @@ function simultaneousEq(diff) {
   const x = randInt(-10, 10), y = randInt(-10, 10);
   const a1 = randInt(1, 5), b1 = randInt(1, 5), a2 = randInt(1, 5), b2 = randInt(1, 5);
   const c1 = a1 * x + b1 * y, c2 = a2 * x - b2 * y;
-  return { q: `${a1}x + ${b1}y = ${c1},  ${a2}x - ${b2}y = ${c2}  연립방정식을 풀어 x, y의 값을 구하세요.`, a: `x=${x}, y=${y}` };
+  return {
+    q: `x, y의 값을 구하세요.`,
+    condition: `${a1}x + ${b1}y = ${c1}\n${a2}x - ${b2}y = ${c2}`,
+    a: `x=${x}, y=${y}`,
+    solution: `두 식을 연립하여 풀면 x=${x}, y=${y}`,
+  };
 }
 function linearFunc(diff) {
   const a = randInt(-5, 5) || 2, b = randInt(-10, 10);
@@ -510,7 +528,12 @@ function probabilityBasic(diff) {
   const total = randInt(diff === 'easy' ? 5 : 10, diff === 'easy' ? 10 : 20);
   const favorable = randInt(1, total - 1);
   const [sn, sd] = simplifyFrac(favorable, total);
-  return { q: `주머니에 공이 ${total}개 있고 그중 ${favorable}개가 특정 색입니다. 하나를 뽑을 때 그 색일 확률을 기약분수로 나타내세요.`, a: `${sn}/${sd}` };
+  return {
+    q: `주머니에 공이 ${total}개 있고 그중 ${favorable}개가 특정 색입니다. 하나를 뽑을 때 그 색일 확률을 기약분수로 나타내세요.`,
+    a: `${sn}/${sd}`,
+    svg: svgBallsDiagram(total, favorable),
+    solution: `${favorable}/${total} = ${sn}/${sd} (기약분수)`,
+  };
 }
 function linearInequality(diff) {
   const a = randInt(1, diff === 'easy' ? 5 : 9), b = randInt(-20, 20);
@@ -588,9 +611,11 @@ function quadraticMinMax(diff) {
   const maxV = a > 0 ? Math.max(fLo, fHi) : k;
   const minV = a > 0 ? k : Math.min(fLo, fHi);
   return {
-    q: `${lo} ≤ x ≤ ${hi} 에서 함수 f(x) = ${a}x² ${sgnTerm(b)}x ${sgnTerm(c)} 의 최댓값과 최솟값의 합을 구하세요.`,
+    q: `최댓값과 최솟값의 합을 구하세요.`,
+    condition: `${lo} ≤ x ≤ ${hi} 에서 함수 f(x) = ${a}x² ${sgnTerm(b)}x ${sgnTerm(c)}`,
     a: String(maxV + minV),
     svg: svgQuadraticGraph(a, b, c, h),
+    solution: `꼭짓점 (${h}, ${k}), f(${lo})=${fLo}, f(${hi})=${fHi} → 최댓값 ${maxV}, 최솟값 ${minV}`,
   };
 }
 function remainderTheorem(diff) {
@@ -664,9 +689,11 @@ function derivative(diff) {
   const givenV = p ** 3 + trueA * p * p + trueB * p + c;
   const cTerm = c === 0 ? '' : ` ${sgnTerm(c)}`;
   return {
-    q: `삼차함수 f(x) = x³ + ax² + bx${cTerm} 가 x = ${p} 에서 극값 ${givenV}를 가질 때, 상수 a, b에 대하여 a+b의 값을 구하세요.`,
+    q: `상수 a, b에 대하여 a+b의 값을 구하세요.`,
+    condition: `삼차함수 f(x) = x³ + ax² + bx${cTerm} 는 x = ${p} 에서 극값 ${givenV}를 가진다.`,
     a: String(trueA + trueB),
     svg: svgTangentGraph(1, trueA, trueB, c, p),
+    solution: `f'(${p})=0 과 f(${p})=${givenV} 를 연립하면 a=${trueA}, b=${trueB}`,
   };
 }
 function integralProblem(diff) {
@@ -703,6 +730,7 @@ function probStats(diff) {
     q: `다음은 어떤 자료를 계급의 크기가 ${width}인 도수분포표로 나타낸 것입니다. 이 자료의 평균을 계급값을 이용하여 구하세요.`,
     a: Number.isInteger(mean) ? String(mean) : mean.toFixed(2),
     svg: htmlDataTable(['계급', '도수'], rows),
+    solution: `평균 = (계급값×도수)의 합 ÷ 도수의 합 = ${sum}/${total}`,
   };
 }
 function limitBasic(diff) {
@@ -718,6 +746,7 @@ function definiteIntegral(diff) {
     q: `곡선 y = ${a}x^${n} 과 x축, 두 직선 x=${lo}, x=${hi}로 둘러싸인 부분의 넓이를 구하세요.`,
     a: String(val),
     svg: svgAreaGraph(a, n, lo, hi),
+    solution: `∫ ${a}x^${n} dx = ${a}/${n + 1} x^${n + 1}, [${lo}, ${hi}] 대입하면 ${val}`,
   };
 }
 

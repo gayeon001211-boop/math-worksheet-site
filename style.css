@@ -71,7 +71,7 @@ main {
 .field { display: flex; flex-direction: column; gap: 8px; }
 .field label { font-weight: 600; font-size: 14px; color: var(--text); }
 
-select, input[type="number"] {
+select, input[type="number"], textarea {
   padding: 10px 12px;
   border: 1px solid var(--border);
   border-radius: 8px;
@@ -79,6 +79,7 @@ select, input[type="number"] {
   background: #fff;
   color: var(--text);
 }
+textarea { font-family: inherit; resize: vertical; width: 100%; }
 
 .topic-list {
   display: flex;
@@ -241,7 +242,18 @@ body.exam-mode .exam-only { display: inline; }
 }
 .page-header h2 { margin: 0 0 8px; font-size: 18px; color: #fff; }
 .page-header-meta { color: rgba(255, 255, 255, 0.88); font-size: 12px; margin-bottom: 10px; }
-.page-header-student { display: flex; gap: 16px; font-size: 12.5px; flex-wrap: wrap; color: #fff; }
+
+.header-table { border-collapse: collapse; width: 100%; font-size: 11px; color: #fff; }
+.header-table th, .header-table td {
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  padding: 4px 10px;
+  text-align: left;
+  font-weight: 400;
+}
+.header-table th { background: rgba(255, 255, 255, 0.15); font-weight: 700; white-space: nowrap; width: 1%; }
+.header-table td { min-width: 70px; }
+.exam-only-cell { display: none; }
+body.exam-mode .exam-only-cell { display: table-cell; }
 
 .page-footer {
   margin-top: 12px;
@@ -285,15 +297,27 @@ body.exam-mode .exam-only { display: inline; }
 .qblock { flex: 1; align-self: stretch; display: flex; flex-direction: column; gap: 10px; }
 
 .diff-badge {
-  font-size: 11px;
+  font-size: 8px;
   font-weight: 700;
-  padding: 2px 7px;
+  padding: 3px 6px;
   border-radius: 5px;
   color: #fff;
+  letter-spacing: 0.5px;
+  white-space: nowrap;
 }
 .diff-badge.diff-easy { background: #22c55e; }
 .diff-badge.diff-medium { background: #3b82f6; }
 .diff-badge.diff-hard { background: #ef4444; }
+
+.condition-box {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 8px 10px;
+  background: #fafbff;
+  font-size: 0.92em;
+  white-space: pre-line;
+  line-height: 1.5;
+}
 
 .diagram-wrap { display: flex; justify-content: center; padding: 2px 0; color: var(--text); }
 .diagram-wrap svg.prob-diagram { max-width: 92px; height: auto; }
@@ -353,6 +377,8 @@ body.show-answers-preview .answer-sheet { display: block; }
 }
 .ans-item { font-size: 14px; color: var(--text); }
 .ans-item b { color: var(--accent-dark); margin-right: 4px; }
+.ans-solution { display: block; font-size: 10.5px; color: var(--text-muted); margin-top: 2px; }
+.ans-student-header { grid-column: 1 / -1; font-weight: 700; color: var(--accent-dark); margin-top: 14px; font-size: 13px; }
 
 .site-footer {
   max-width: 1100px;

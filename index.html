@@ -82,6 +82,7 @@
         <button id="generateBtn" class="btn primary">문제집 생성하기</button>
         <button id="printBtn" class="btn secondary">인쇄 / PDF 저장</button>
         <button id="saveBtn" class="btn secondary">현재 문제집 저장</button>
+        <button id="shareBtn" class="btn secondary">공유 링크 만들기</button>
       </div>
     </section>
 
@@ -93,6 +94,17 @@
           <button id="generatePagesBtn" class="btn primary">이 페이지 수로 생성하기</button>
         </div>
         <p class="hint">왼쪽에서 고른 학년·단원·난이도가 그대로 적용돼요. 페이지당 문항 수는 초등 12문항, 중·고등 6문항 기준으로 계산돼요.</p>
+      </div>
+    </section>
+
+    <section class="panel-section no-print">
+      <div class="field">
+        <label for="studentNamesInput">반 전체 일괄 생성 (학생마다 다른 문제)</label>
+        <textarea id="studentNamesInput" rows="3" placeholder="한 줄에 한 명씩 이름을 입력하세요&#10;예) 김가연&#10;이수민"></textarea>
+        <div class="page-row">
+          <button id="generateBatchBtn" class="btn primary">학생별로 각각 생성하기</button>
+        </div>
+        <p class="hint">왼쪽에서 고른 학년·단원·난이도·문제 수가 그대로 적용되고, 학생마다 서로 다른 문제로 생성돼요 (커닝 방지용). 각 학생 이름이 헤더에 자동으로 채워집니다.</p>
       </div>
     </section>
 

@@ -25,9 +25,12 @@ const essayPercentInput = document.getElementById('essayPercent');
 const generateBtn = document.getElementById('generateBtn');
 const printBtn = document.getElementById('printBtn');
 const saveBtn = document.getElementById('saveBtn');
+const shareBtn = document.getElementById('shareBtn');
 const pagePanel = document.getElementById('pagePanel');
 const pageSectionInput = document.getElementById('pageSectionInput');
 const generatePagesBtn = document.getElementById('generatePagesBtn');
+const studentNamesInput = document.getElementById('studentNamesInput');
+const generateBatchBtn = document.getElementById('generateBatchBtn');
 const savedList = document.getElementById('savedList');
 const loadSavedBtn = document.getElementById('loadSavedBtn');
 const deleteSavedBtn = document.getElementById('deleteSavedBtn');
@@ -141,9 +144,7 @@ function chunk(arr, size) {
 function extractDistractors(answerHtml) {
   if (/<[^>]+>/.test(answerHtml)) return null;
   const trimmed = answerHtml.trim();
-  if (trimmed === '>' || trimmed === '<' || trimmed === '=') {
-    return ['>', '<', '='].filter((s) => s !== trimmed);
-  }
+  if (trimmed === '>' || trimmed === '<' || trimmed === '=') return null; // only 2 alternatives — can't fill 4 distractors
   const m = trimmed.match(/^(-?\d+(?:\.\d+)?)(.*)$/);
   if (!m) return null;
   const suffix = m[2] || '';
@@ -151,15 +152,15 @@ function extractDistractors(answerHtml) {
   const num = parseFloat(m[1]);
   const isInt = Number.isInteger(num);
   const magnitude = Math.max(1, Math.round(Math.abs(num) * 0.15));
-  const deltaPool = shuffle([1, -1, 2, -2, magnitude, -magnitude, magnitude * 2, -magnitude * 2]);
+  const deltaPool = shuffle([1, -1, 2, -2, 3, -3, magnitude, -magnitude, magnitude * 2, -magnitude * 2, magnitude * 3, -magnitude * 3]);
   const seen = new Set([num]);
   const out = [];
   for (const d of deltaPool) {
-    if (out.length >= 3) break;
+    if (out.length >= 4) break;
     const cand = isInt ? num + d : Number((num + d).toFixed(2));
     if (!seen.has(cand)) { seen.add(cand); out.push(`${cand}${suffix}`); }
   }
-  return out.length >= 3 ? out : null;
+  return out.length >= 4 ? out : null;
 }
 
 function currentTypeSettings() {
@@ -236,24 +237,26 @@ function assignTypes(problems) {
   });
 }
 
-const CHOICE_MARKS = ['①', '②', '③', '④'];
+const CHOICE_MARKS = ['①', '②', '③', '④', '⑤'];
+const DIFF_STARS = { easy: '★★☆☆☆', medium: '★★★☆☆', hard: '★★★★★' };
 
 function renderProblemHtml(p, num) {
   const cls = 'problem';
-  const diffBadge = p.diff ? `<span class="diff-badge diff-${p.diff}">${DIFF_LABEL[p.diff]}</span>` : '';
+  const diffBadge = p.diff ? `<span class="diff-badge diff-${p.diff}">${DIFF_STARS[p.diff]}</span>` : '';
   const svgHtml = p.svg ? `<div class="diagram-wrap">${p.svg}</div>` : '';
+  const conditionHtml = p.condition ? `<div class="condition-box">${p.condition}</div>` : '';
 
-  let bodyHtml;
+  let qblockInner;
   if (p.type === 'choice') {
     const choicesHtml = p.choices.map((c, i) => `<span class="choice">${CHOICE_MARKS[i]} ${c}</span>`).join('');
-    bodyHtml = `<div class="qblock"><span class="qtext">${p.q}</span>${svgHtml}<div class="choices">${choicesHtml}</div></div>`;
+    qblockInner = `${conditionHtml}<span class="qtext">${p.q}</span>${svgHtml}<div class="choices">${choicesHtml}</div>`;
   } else if (p.type === 'essay') {
-    bodyHtml = `<div class="qblock"><span class="qtext">${p.q} <span class="essay-tag">(풀이 과정과 답을 쓰세요)</span></span>${svgHtml}<div class="essay-lines"></div></div>`;
-  } else if (p.svg) {
-    bodyHtml = `<div class="qblock"><span class="qtext">${p.q}</span>${svgHtml}</div>`;
+    qblockInner = `${conditionHtml}<span class="qtext">${p.q} <span class="essay-tag">(풀이 과정과 답을 쓰세요)</span></span>${svgHtml}<div class="essay-lines"></div>`;
   } else {
-    bodyHtml = `<span class="qtext">${p.q}</span>`;
+    qblockInner = `${conditionHtml}<span class="qtext">${p.q}</span>${svgHtml}`;
   }
+  const needsBlock = p.type !== 'subjective' || !!p.svg || !!p.condition;
+  const bodyHtml = needsBlock ? `<div class="qblock">${qblockInner}</div>` : `<span class="qtext">${p.q}</span>`;
   return `<div class="${cls}"><span class="num">${diffBadge}${num}.</span>${bodyHtml}</div>`;
 }
 
@@ -289,17 +292,21 @@ function resolveCount() {
   return count;
 }
 
-function pageHeaderHtml(titleText, metaText) {
+function pageHeaderHtml(titleText, metaText, studentName) {
   return `
     <div class="page-header">
       <h2>${titleText}</h2>
       <div class="page-header-meta">${metaText}</div>
-      <div class="page-header-student">
-        <span>이름: ________________</span>
-        <span class="exam-only">수험번호: ________________</span>
-        <span>날짜: ________________</span>
-        <span>점수: ________________</span>
-      </div>
+      <table class="header-table">
+        <tr>
+          <th>이름</th><td>${studentName || ''}</td>
+          <th class="exam-only-cell">수험번호</th><td class="exam-only-cell"></td>
+        </tr>
+        <tr>
+          <th>날짜</th><td></td>
+          <th>점수</th><td></td>
+        </tr>
+      </table>
     </div>`;
 }
 
@@ -343,7 +350,11 @@ function renderWorksheet(problems, titleText, metaText, answerTitleText, groupLa
     .join('');
 
   answerList.innerHTML = problems
-    .map((p, i) => `<span class="ans-item"><b>${i + 1}.</b> ${p.type === 'choice' ? CHOICE_MARKS[p.correctIdx] : p.a}</span>`)
+    .map((p, i) => {
+      const ans = p.type === 'choice' ? CHOICE_MARKS[p.correctIdx] : p.a;
+      const sol = p.solution ? `<span class="ans-solution">${p.solution}</span>` : '';
+      return `<span class="ans-item"><b>${i + 1}.</b> ${ans}${sol}</span>`;
+    })
     .join('');
 
   emptyState.classList.add('hidden');
@@ -449,6 +460,113 @@ function onGeneratePages() {
   finalizeAndRender(grade, sources, counts, examMode, diff, `약 ${pages}페이지 분량`, findGroup(gradeId));
 }
 
+function resolveCountsForSources(sources) {
+  if (customCountModeCb.checked) {
+    const counts = sources.map((s) => {
+      const input = topicList.querySelector(`.topic-count[data-count-for="${s.topicId}"]`);
+      let v = input ? parseInt(input.value, 10) : 0;
+      if (Number.isNaN(v)) v = 0;
+      return Math.max(0, Math.min(30, v));
+    });
+    return counts.reduce((a, b) => a + b, 0) > 0 ? counts : null;
+  }
+  const count = resolveCount();
+  return distribute(count, sources.length);
+}
+
+function onGenerateBatch() {
+  const names = studentNamesInput.value.split('\n').map((s) => s.trim()).filter(Boolean);
+  if (!names.length) {
+    alert('학생 이름을 한 줄에 한 명씩 입력해주세요.');
+    return;
+  }
+  const gradeId = gradeSelect.value;
+  const grade = findGrade(gradeId);
+  if (!grade) return;
+  const examMode = examModeCb.checked;
+  const diff = document.querySelector('input[name="difficulty"]:checked').value;
+  const groupLabel = findGroup(gradeId);
+  const pageSize = pageSizeForGroup(groupLabel);
+
+  const allPages = [];
+  const answerBlocks = [];
+  for (const name of names) {
+    const sources = buildSources(grade, gradeId, examMode, diff);
+    if (sources.length === 0) {
+      alert('최소 하나 이상의 단원을 선택해주세요.');
+      return;
+    }
+    const counts = resolveCountsForSources(sources);
+    if (!counts) {
+      alert('단원별 문항 수를 1개 이상 입력해주세요.');
+      return;
+    }
+    let problems = [];
+    sources.forEach((src, i) => {
+      if (counts[i] > 0) problems = problems.concat(generateUnique(src.gen, counts[i]));
+    });
+    problems = shuffle(problems);
+    if (problems.length === 0) continue;
+    problems = assignTypes(problems);
+    const pages = chunk(problems, pageSize);
+    pages.forEach((pageProblems, idx) => allPages.push({ name, pageProblems, idx, total: pages.length }));
+    answerBlocks.push({ name, problems });
+  }
+
+  if (!allPages.length) {
+    alert('생성된 문제가 없습니다. 단원별 문항 수를 확인해주세요.');
+    return;
+  }
+
+  currentProblems = [];
+  currentTitleText = examMode ? `${grade.label} 수학 실전 대비 모의고사` : `${grade.label} 수학 문제집`;
+  currentMetaText = `일괄 생성 · 학생 ${names.length}명`;
+  currentGroupLabel = groupLabel;
+  applyTheme(currentGroupLabel);
+
+  coverBadge.textContent = currentGroupLabel || '수학';
+  coverTitle.textContent = currentTitleText;
+  coverSubtitle.textContent = `학생마다 서로 다른 문제로 개별 생성됐어요.`;
+  coverStats.innerHTML = [
+    `<span class="stat-chip">학생 ${names.length}명</span>`,
+    `<span class="stat-chip">총 ${allPages.length}페이지</span>`,
+  ].join('');
+  coverFooter.textContent = `생성일: ${new Date().toLocaleDateString('ko-KR')}`;
+
+  problemList.innerHTML = allPages
+    .map((pg, i) => {
+      const isVeryLast = i === allPages.length - 1;
+      const rows = Math.ceil(pg.pageProblems.length / 2);
+      const items = pg.pageProblems.map((p, j) => renderProblemHtml(p, pg.idx * pageSize + j + 1)).join('');
+      const metaText = `${pg.name} 학생  |  ${pg.idx + 1}/${pg.total}페이지`;
+      return `
+        <div class="page-sheet page-block${isVeryLast ? '' : ' page-break'}">
+          ${pageHeaderHtml(currentTitleText, metaText, pg.name)}
+          <div class="problem-grid" style="grid-template-rows: repeat(${rows}, 1fr);">${items}</div>
+          <div class="page-footer">${pg.idx + 1} / ${pg.total}</div>
+        </div>`;
+    })
+    .join('');
+
+  answerGradeLabel.textContent = `${currentTitleText} - 정답지 (학생별)`;
+  answerList.innerHTML = answerBlocks
+    .map(({ name, problems }) => {
+      const header = `<span class="ans-student-header">${name}</span>`;
+      const items = problems
+        .map((p, i) => {
+          const ans = p.type === 'choice' ? CHOICE_MARKS[p.correctIdx] : p.a;
+          return `<span class="ans-item"><b>${i + 1}.</b> ${ans}</span>`;
+        })
+        .join('');
+      return header + items;
+    })
+    .join('');
+
+  emptyState.classList.add('hidden');
+  worksheetSection.classList.remove('hidden');
+  worksheetSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
 function getSaved() {
   try {
     return JSON.parse(localStorage.getItem(SAVE_KEY)) || [];
@@ -505,6 +623,90 @@ function onDeleteSaved() {
   refreshSavedList();
 }
 
+// ---------- share via URL (no backend — payload is compressed into the link itself) ----------
+function arrayBufferToBase64Url(buf) {
+  let binary = '';
+  const bytes = new Uint8Array(buf);
+  for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+  return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+function base64UrlToArrayBuffer(b64) {
+  let s = b64.replace(/-/g, '+').replace(/_/g, '/');
+  while (s.length % 4) s += '=';
+  const binary = atob(s);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return bytes.buffer;
+}
+async function compressPayload(obj) {
+  const json = JSON.stringify(obj);
+  const bytes = new TextEncoder().encode(json);
+  if (window.CompressionStream) {
+    const cs = new CompressionStream('gzip');
+    const writer = cs.writable.getWriter();
+    writer.write(bytes);
+    writer.close();
+    const compressed = await new Response(cs.readable).arrayBuffer();
+    return `gz:${arrayBufferToBase64Url(compressed)}`;
+  }
+  return `raw:${arrayBufferToBase64Url(bytes.buffer)}`;
+}
+async function decompressPayload(str) {
+  const sep = str.indexOf(':');
+  const mode = str.slice(0, sep), data = str.slice(sep + 1);
+  const bytes = base64UrlToArrayBuffer(data);
+  if (mode === 'gz') {
+    const ds = new DecompressionStream('gzip');
+    const writer = ds.writable.getWriter();
+    writer.write(new Uint8Array(bytes));
+    writer.close();
+    const decompressed = await new Response(ds.readable).arrayBuffer();
+    return JSON.parse(new TextDecoder().decode(decompressed));
+  }
+  return JSON.parse(new TextDecoder().decode(bytes));
+}
+async function onShare() {
+  if (!currentProblems.length) {
+    alert('먼저 문제집을 생성해주세요. (일괄 생성 결과는 아직 공유 링크를 지원하지 않아요)');
+    return;
+  }
+  const payload = {
+    title: currentTitleText,
+    meta: currentMetaText,
+    answerTitle: answerGradeLabel.textContent,
+    groupLabel: currentGroupLabel,
+    problems: currentProblems.map((p) => ({ q: p.q, a: p.a, type: p.type, choices: p.choices, correctIdx: p.correctIdx, svg: p.svg, diff: p.diff })),
+  };
+  let encoded;
+  try {
+    encoded = await compressPayload(payload);
+  } catch (e) {
+    alert('이 브라우저에서는 공유 링크를 만들 수 없어요.');
+    return;
+  }
+  if (encoded.length > 7000) {
+    alert('문제집이 너무 커서 링크로 공유하기 어려워요. 문제 수를 줄이거나 그래픽이 적은 단원으로 다시 시도해주세요.');
+    return;
+  }
+  const url = `${location.origin}${location.pathname}#s=${encoded}`;
+  try {
+    await navigator.clipboard.writeText(url);
+    alert('공유 링크가 클립보드에 복사됐어요! 붙여넣기해서 전달해주세요.');
+  } catch {
+    prompt('아래 링크를 복사해서 전달해주세요:', url);
+  }
+}
+async function loadFromHash() {
+  const m = location.hash.match(/^#s=(.+)$/);
+  if (!m) return;
+  try {
+    const payload = await decompressPayload(decodeURIComponent(m[1]));
+    renderWorksheet(payload.problems, payload.title, payload.meta, payload.answerTitle, payload.groupLabel);
+  } catch (e) {
+    console.error('공유 링크를 불러오지 못했습니다.', e);
+  }
+}
+
 function syncPrintAnswerClass() {
   document.body.classList.toggle('include-answers', includeAnswersCb.checked);
 }
@@ -543,8 +745,10 @@ gradeSelect.addEventListener('change', () => {
 });
 generateBtn.addEventListener('click', onGenerate);
 generatePagesBtn.addEventListener('click', onGeneratePages);
+generateBatchBtn.addEventListener('click', onGenerateBatch);
 printBtn.addEventListener('click', () => window.print());
 saveBtn.addEventListener('click', onSave);
+shareBtn.addEventListener('click', onShare);
 loadSavedBtn.addEventListener('click', onLoadSaved);
 deleteSavedBtn.addEventListener('click', onDeleteSaved);
 includeAnswersCb.addEventListener('change', syncPrintAnswerClass);
@@ -566,3 +770,4 @@ syncExamMode();
 syncFontSize();
 syncTypeMode();
 refreshSavedList();
+loadFromHash();
