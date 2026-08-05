@@ -202,7 +202,7 @@ function assignTypes(problems) {
   let essayTarget = Math.round((total * essayPct) / 100);
   if (mcTarget + essayTarget > total) essayTarget = Math.max(0, total - mcTarget);
 
-  const order = shuffle(problems.map((_, i) => i));
+  const order = shuffle(problems.map((_, i) => i).filter((i) => !problems[i].fixedType));
   const type = new Array(total).fill('subjective');
   const choiceData = new Array(total).fill(null);
 

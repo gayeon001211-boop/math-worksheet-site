@@ -47,8 +47,36 @@ function svgRightTriangle(labelA, labelB, labelC) {
   `;
   return svgWrap(inner, 100, 90);
 }
-// Real box net (전개도): a cross layout of the 6 faces, not a pseudo-3D sketch.
-function svgBox(l, w, h) {
+// A real 3D-perspective cuboid (front face + top/side faces via a depth offset),
+// hidden back edges dashed — this is what volume/edge-counting problems use in
+// real textbooks, as opposed to the flattened net below.
+function svgBox3D(l, w, h) {
+  const maxDim = Math.max(l, w, h);
+  const scale = 42 / maxDim;
+  const fw = Math.max(20, l * scale);
+  const fh = Math.max(20, h * scale);
+  const dep = Math.max(14, w * scale * 0.6);
+  const ox = 14, oy = 62;
+  const dx = dep * 0.85, dy = -dep * 0.55;
+  const A = [ox, oy], B = [ox + fw, oy], C = [ox + fw, oy - fh], D = [ox, oy - fh];
+  const A2 = [A[0] + dx, A[1] + dy], B2 = [B[0] + dx, B[1] + dy], C2 = [C[0] + dx, C[1] + dy], D2 = [D[0] + dx, D[1] + dy];
+  const poly = (pts) => pts.map((p) => `${p[0].toFixed(1)},${p[1].toFixed(1)}`).join(' ');
+  const line = (p1, p2, dashed) => `<line x1="${p1[0].toFixed(1)}" y1="${p1[1].toFixed(1)}" x2="${p2[0].toFixed(1)}" y2="${p2[1].toFixed(1)}" stroke="currentColor" stroke-width="${dashed ? 1 : 1.4}" ${dashed ? 'stroke-dasharray="2,2"' : ''}/>`;
+  const inner = `
+    <polygon points="${poly([D, C, C2, D2])}" fill="currentColor" fill-opacity="0.05" stroke="currentColor" stroke-width="1.3"/>
+    <polygon points="${poly([B, C, C2, B2])}" fill="currentColor" fill-opacity="0.1" stroke="currentColor" stroke-width="1.3"/>
+    <polygon points="${poly([A, B, C, D])}" fill="none" stroke="currentColor" stroke-width="1.6"/>
+    ${line(A, A2, true)}
+    ${line(A2, D2, true)}
+    ${line(A2, B2, true)}
+    <text x="${((A[0] + B[0]) / 2).toFixed(1)}" y="${(oy + 11).toFixed(1)}" font-size="9" text-anchor="middle">${l}</text>
+    <text x="${(A[0] - 9).toFixed(1)}" y="${((A[1] + D[1]) / 2).toFixed(1)}" font-size="9" text-anchor="middle">${h}</text>
+    <text x="${((B[0] + B2[0]) / 2 + 4).toFixed(1)}" y="${((B[1] + B2[1]) / 2).toFixed(1)}" font-size="9">${w}</text>
+  `;
+  return svgWrap(inner, ox + fw + dx + 12, 90);
+}
+// Box net (전개도): a cross layout of the 6 faces, unfolded flat.
+function svgBoxNet(l, w, h) {
   const maxDim = Math.max(l, w, h);
   const unit = 24 / maxDim;
   const dim = (v) => Math.max(9, v * unit);
@@ -141,6 +169,93 @@ function svgCoordPlane(x, y) {
   return svgWrap(inner, 100, 100);
 }
 
+function svgClock(hour, minute) {
+  const cx = 50, cy = 50, r = 42;
+  const hourAngle = (((hour % 12) + minute / 60) * 30 - 90) * (Math.PI / 180);
+  const minAngle = (minute * 6 - 90) * (Math.PI / 180);
+  const hx = cx + r * 0.5 * Math.cos(hourAngle), hy = cy + r * 0.5 * Math.sin(hourAngle);
+  const mx = cx + r * 0.8 * Math.cos(minAngle), my = cy + r * 0.8 * Math.sin(minAngle);
+  let ticks = '';
+  for (let i = 0; i < 12; i++) {
+    const a = (i * 30 - 90) * (Math.PI / 180);
+    const x1 = cx + r * 0.88 * Math.cos(a), y1 = cy + r * 0.88 * Math.sin(a);
+    const x2 = cx + r * Math.cos(a), y2 = cy + r * Math.sin(a);
+    ticks += `<line x1="${x1.toFixed(1)}" y1="${y1.toFixed(1)}" x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}" stroke="currentColor" stroke-width="1"/>`;
+  }
+  const inner = `
+    <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="currentColor" stroke-width="1.6"/>
+    ${ticks}
+    <line x1="${cx}" y1="${cy}" x2="${hx.toFixed(1)}" y2="${hy.toFixed(1)}" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/>
+    <line x1="${cx}" y1="${cy}" x2="${mx.toFixed(1)}" y2="${my.toFixed(1)}" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+    <circle cx="${cx}" cy="${cy}" r="2.2" fill="currentColor"/>
+  `;
+  return svgWrap(inner, 100, 100);
+}
+// A vertex with two adjacent angles marked (deg1 then deg2), sharing a common middle ray.
+function svgAngleMark(deg1, deg2, label1, label2) {
+  const cx = 12, cy = 68, r = 52;
+  const pt = (angleDeg, rr) => [cx + rr * Math.cos((angleDeg * Math.PI) / 180), cy - rr * Math.sin((angleDeg * Math.PI) / 180)];
+  const p0 = pt(0, r), p1 = pt(deg1, r), p2 = pt(deg1 + deg2, r);
+  const a1mid = pt(deg1 / 2, 22), a2mid = pt(deg1 + deg2 / 2, 30);
+  const inner = `
+    <line x1="${cx}" y1="${cy}" x2="${p0[0].toFixed(1)}" y2="${p0[1].toFixed(1)}" stroke="currentColor" stroke-width="1.6"/>
+    <line x1="${cx}" y1="${cy}" x2="${p1[0].toFixed(1)}" y2="${p1[1].toFixed(1)}" stroke="currentColor" stroke-width="1.6"/>
+    <line x1="${cx}" y1="${cy}" x2="${p2[0].toFixed(1)}" y2="${p2[1].toFixed(1)}" stroke="currentColor" stroke-width="1.6"/>
+    <text x="${a1mid[0].toFixed(1)}" y="${a1mid[1].toFixed(1)}" font-size="9" text-anchor="middle">${label1}</text>
+    <text x="${a2mid[0].toFixed(1)}" y="${a2mid[1].toFixed(1)}" font-size="9" text-anchor="middle">${label2}</text>
+  `;
+  return svgWrap(inner, cx + r + 10, cy + 14);
+}
+function svgTriangleAngles(labelA, labelB, labelC) {
+  const pts = [[10, 70], [95, 70], [45, 10]];
+  const inner = `
+    <polygon points="${pts.map((p) => p.join(',')).join(' ')}" fill="none" stroke="currentColor" stroke-width="1.7"/>
+    <text x="20" y="65" font-size="9">${labelA}</text>
+    <text x="76" y="65" font-size="9">${labelB}</text>
+    <text x="45" y="24" font-size="9" text-anchor="middle">${labelC}</text>
+  `;
+  return svgWrap(inner, 105, 80);
+}
+function svgVennDiagram(onlyA, onlyB, both) {
+  const inner = `
+    <circle cx="40" cy="45" r="30" fill="none" stroke="currentColor" stroke-width="1.4"/>
+    <circle cx="64" cy="45" r="30" fill="none" stroke="currentColor" stroke-width="1.4"/>
+    <text x="22" y="49" font-size="10" text-anchor="middle">${onlyA}</text>
+    <text x="52" y="49" font-size="10" text-anchor="middle">${both}</text>
+    <text x="82" y="49" font-size="10" text-anchor="middle">${onlyB}</text>
+    <text x="14" y="12" font-size="10">A</text>
+    <text x="88" y="12" font-size="10">B</text>
+  `;
+  return svgWrap(inner, 104, 90);
+}
+// An open/closed circle at x with a bold ray extending toward the solution direction.
+function svgNumberLine(x, dir) {
+  const scale = 8, cx = 60;
+  const px = Math.max(16, Math.min(104, cx + x * scale));
+  const inner = `
+    <line x1="10" y1="40" x2="112" y2="40" stroke="currentColor" stroke-width="1.4"/>
+    <line x1="107" y1="35" x2="112" y2="40" stroke="currentColor" stroke-width="1.4"/>
+    <line x1="107" y1="45" x2="112" y2="40" stroke="currentColor" stroke-width="1.4"/>
+    <line x1="${px.toFixed(1)}" y1="40" x2="${dir === '>' ? 108 : 12}" y2="40" stroke="currentColor" stroke-width="3"/>
+    <circle cx="${px.toFixed(1)}" cy="40" r="3.2" fill="none" stroke="currentColor" stroke-width="1.6"/>
+    <text x="${px.toFixed(1)}" y="56" font-size="9" text-anchor="middle">${x}</text>
+  `;
+  return svgWrap(inner, 122, 62);
+}
+function svgVectorArrow(x, y) {
+  const cx = 16, cy = 90;
+  const scale = 60 / Math.max(Math.abs(x), Math.abs(y), 1);
+  const ex = cx + x * scale, ey = cy - y * scale;
+  const inner = `
+    <defs><marker id="vecArrow" markerWidth="7" markerHeight="7" refX="5.5" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="currentColor"/></marker></defs>
+    <line x1="10" y1="${cy}" x2="100" y2="${cy}" stroke="currentColor" stroke-width="1" opacity="0.3"/>
+    <line x1="${cx}" y1="10" x2="${cx}" y2="98" stroke="currentColor" stroke-width="1" opacity="0.3"/>
+    <line x1="${cx}" y1="${cy}" x2="${ex.toFixed(1)}" y2="${ey.toFixed(1)}" stroke="currentColor" stroke-width="1.8" marker-end="url(#vecArrow)"/>
+    <text x="${(ex + 5).toFixed(1)}" y="${(ey - 3).toFixed(1)}" font-size="9">(${x}, ${y})</text>
+  `;
+  return svgWrap(inner, 104, 100);
+}
+
 // ---------- function graphs (schematic) ----------
 function makeMapper(xMin, xMax, yMin, yMax, w, h, pad) {
   const sx = (w - 2 * pad) / (xMax - xMin || 1);
@@ -181,6 +296,24 @@ function markPoint(px, py, zy, label) {
     <circle cx="${px.toFixed(1)}" cy="${py.toFixed(1)}" r="2.6" fill="currentColor"/>
     <text x="${px.toFixed(1)}" y="${ty.toFixed(1)}" font-size="9" text-anchor="middle">${label}</text>
   `;
+}
+function svgLinearGraph(a, b, markX) {
+  const f = (x) => a * x + b;
+  const xMin = Math.min(0, markX) - 3, xMax = Math.max(0, markX) + 3;
+  const samples = [f(xMin), f(xMax), f(markX), 0];
+  let yMin = Math.min(...samples), yMax = Math.max(...samples);
+  if (yMax - yMin < 4) { yMin -= 2; yMax += 2; }
+  const w = 120, h = 116, pad = 14;
+  const { toSX, toSY } = makeMapper(xMin, xMax, yMin, yMax, w, h, pad);
+  const { zx, zy } = axisZero(toSX, toSY, pad, w, h);
+  const path = `M${toSX(xMin).toFixed(1)},${toSY(f(xMin)).toFixed(1)} L${toSX(xMax).toFixed(1)},${toSY(f(xMax)).toFixed(1)}`;
+  const mx = toSX(markX), my = toSY(f(markX));
+  const inner = `
+    ${axesSvg(zx, zy, pad, w, h)}
+    <path d="${path}" fill="none" stroke="currentColor" stroke-width="1.8"/>
+    ${markPoint(mx, my, zy, markX)}
+  `;
+  return svgWrap(inner, w, h);
 }
 function svgQuadraticGraph(a, b, c, markX) {
   const f = (x) => a * x * x + b * x + c;
@@ -320,7 +453,7 @@ function clockHour(diff) {
   const start = randInt(1, 12);
   const add = diff === 'easy' ? randInt(1, 3) : diff === 'medium' ? randInt(1, 6) : randInt(1, 11);
   let end = (start + add) % 12; if (end === 0) end = 12;
-  return { q: `지금이 ${start}시입니다. ${add}시간 후는 몇 시입니까?`, a: `${end}시` };
+  return { q: `지금이 ${start}시입니다. ${add}시간 후는 몇 시입니까?`, a: `${end}시`, svg: svgClock(start, 0) };
 }
 
 // ---------- grade 2 (초2) ----------
@@ -351,7 +484,7 @@ function clockMinutes(diff) {
   const total = h * 60 + m + addMin;
   let eh = Math.floor(total / 60) % 12; if (eh === 0) eh = 12;
   const em = total % 60;
-  return { q: `${h}시 ${m}분에서 ${addMin}분 후는 몇 시 몇 분입니까?`, a: `${eh}시 ${em}분` };
+  return { q: `${h}시 ${m}분에서 ${addMin}분 후는 몇 시 몇 분입니까?`, a: `${eh}시 ${em}분`, svg: svgClock(h, m) };
 }
 
 // ---------- grade 3 (초3) ----------
@@ -416,12 +549,12 @@ function angleCalc(diff) {
   if (a + b >= 170) return angleCalc(diff);
   if (Math.random() < 0.5) {
     const c = 180 - a - b;
-    return { q: `삼각형의 세 각 중 두 각이 ${a}°, ${b}°일 때 나머지 한 각을 구하세요.`, a: `${c}°` };
+    return { q: `삼각형의 세 각 중 두 각이 ${a}°, ${b}°일 때 나머지 한 각을 구하세요.`, a: `${c}°`, svg: svgTriangleAngles(`${a}°`, `${b}°`, '?') };
   }
   const sum = diff === 'easy' ? 90 : 180;
   const x = sum - a;
   if (x <= 0) return angleCalc(diff);
-  return { q: `두 각의 합이 ${sum}°이고 한 각이 ${a}°일 때 다른 한 각을 구하세요.`, a: `${x}°` };
+  return { q: `두 각의 합이 ${sum}°이고 한 각이 ${a}°일 때 다른 한 각을 구하세요.`, a: `${x}°`, svg: svgAngleMark(a, x, `${a}°`, '?') };
 }
 function multiDigitMultDiv(diff) {
   if (Math.random() < 0.5) {
@@ -508,7 +641,53 @@ function proportionEq(diff) {
 }
 function volumeBox(diff) {
   const l = randInt(2, diff === 'easy' ? 10 : 20), w = randInt(2, diff === 'easy' ? 10 : 20), h = randInt(2, diff === 'easy' ? 10 : 20);
-  return { q: `가로 ${l}cm, 세로 ${w}cm, 높이 ${h}cm인 직육면체의 부피를 구하세요.`, a: `${l * w * h}cm³`, svg: svgBox(l, w, h) };
+  return { q: `가로 ${l}cm, 세로 ${w}cm, 높이 ${h}cm인 직육면체의 부피를 구하세요.`, a: `${l * w * h}cm³`, svg: svgBox3D(l, w, h) };
+}
+function boxSurfaceArea(diff) {
+  const l = randInt(2, diff === 'easy' ? 8 : 15), w = randInt(2, diff === 'easy' ? 8 : 15), h = randInt(2, diff === 'easy' ? 8 : 15);
+  const area = 2 * (l * w + w * h + h * l);
+  return {
+    q: `가로 ${l}cm, 세로 ${w}cm, 높이 ${h}cm인 직육면체의 전개도입니다. 겉넓이를 구하세요.`,
+    a: `${area}cm²`,
+    svg: svgBoxNet(l, w, h),
+  };
+}
+function isDegenerateTriangle(pts) {
+  const [[x1, y1], [x2, y2], [x3, y3]] = pts;
+  return Math.abs((x2 - x1) * (y3 - y1) - (x3 - x1) * (y2 - y1)) === 0;
+}
+function congruentShapeDraw(diff) {
+  const gridSize = 4, cell = 15, pad = 9;
+  const randPoint = () => [randInt(0, gridSize - 1), randInt(0, gridSize - 1)];
+  let pts;
+  do { pts = [randPoint(), randPoint(), randPoint()]; } while (isDegenerateTriangle(pts));
+  const dots = (offsetX) => {
+    let d = '';
+    for (let i = 0; i < gridSize; i++) {
+      for (let j = 0; j < gridSize; j++) {
+        d += `<circle cx="${offsetX + pad + i * cell}" cy="${pad + j * cell}" r="1.3" fill="currentColor" opacity="0.5"/>`;
+      }
+    }
+    return d;
+  };
+  const shapePoly = (offsetX) => {
+    const ptsStr = pts.map(([x, y]) => `${offsetX + pad + x * cell},${pad + y * cell}`).join(' ');
+    return `<polygon points="${ptsStr}" fill="none" stroke="currentColor" stroke-width="1.7"/>`;
+  };
+  const gridW = pad * 2 + (gridSize - 1) * cell;
+  const rightOffset = gridW + 26;
+  const inner = `
+    ${dots(0)}
+    ${shapePoly(0)}
+    <text x="${gridW + 8}" y="${gridW / 2 + 5}" font-size="15">⇒</text>
+    ${dots(rightOffset)}
+  `;
+  return {
+    q: `왼쪽 도형과 합동인 도형을 오른쪽 모눈에 그려보세요.`,
+    a: `왼쪽 도형과 크기와 모양이 같은 도형 (변의 길이·각의 크기가 모두 같도록)`,
+    svg: svgWrap(inner, rightOffset + gridW, gridW),
+    fixedType: 'subjective',
+  };
 }
 
 // ---------- 중1 ----------
@@ -567,7 +746,7 @@ function simultaneousEq(diff) {
 function linearFunc(diff) {
   const a = randInt(-5, 5) || 2, b = randInt(-10, 10);
   const x = randInt(-10, 10);
-  return { q: `일차함수 y = ${a}x ${sgnTerm(b)} 에서 x = ${x} 일 때 y의 값을 구하세요.`, a: String(a * x + b) };
+  return { q: `일차함수 y = ${a}x ${sgnTerm(b)} 에서 x = ${x} 일 때 y의 값을 구하세요.`, a: String(a * x + b), svg: svgLinearGraph(a, b, x) };
 }
 function probabilityBasic(diff) {
   const total = randInt(diff === 'easy' ? 5 : 10, diff === 'easy' ? 10 : 20);
@@ -585,7 +764,7 @@ function linearInequality(diff) {
   const x = randInt(-10, 10);
   const c = a * x + b;
   const dir = Math.random() < 0.5 ? '>' : '<';
-  return { q: `${a}x ${sgnTerm(b)} ${dir} ${c} 의 해를 구하세요.`, a: dir === '>' ? `x > ${x}` : `x < ${x}` };
+  return { q: `${a}x ${sgnTerm(b)} ${dir} ${c} 의 해를 구하세요.`, a: dir === '>' ? `x > ${x}` : `x < ${x}`, svg: svgNumberLine(x, dir) };
 }
 function exponentLaws(diff) {
   const base = randChoice(['a', 'x']);
@@ -689,8 +868,9 @@ function setOps(diff) {
   const A = randInt(4, total - 4), B = randInt(4, total - 4);
   const inter = randInt(1, Math.min(A, B));
   const union = A + B - inter;
-  if (Math.random() < 0.5) return { q: `전체집합의 부분집합 A, B에 대해 n(A)=${A}, n(B)=${B}, n(A∩B)=${inter}일 때 n(A∪B)를 구하세요.`, a: String(union) };
-  return { q: `n(A)=${A}, n(B)=${B}, n(A∪B)=${union}일 때 n(A∩B)를 구하세요.`, a: String(inter) };
+  const svg = svgVennDiagram(A - inter, B - inter, inter);
+  if (Math.random() < 0.5) return { q: `전체집합의 부분집합 A, B에 대해 n(A)=${A}, n(B)=${B}, n(A∩B)=${inter}일 때 n(A∪B)를 구하세요.`, a: String(union), svg };
+  return { q: `n(A)=${A}, n(B)=${B}, n(A∪B)=${union}일 때 n(A∩B)를 구하세요.`, a: String(inter), svg };
 }
 
 // ---------- 고2 ----------
@@ -733,7 +913,7 @@ function vectorMagnitude(diff) {
   const pairs = [[3, 4, 5], [6, 8, 10], [5, 12, 13], [8, 15, 17], [9, 12, 15]];
   const [x, y, m] = randChoice(pairs);
   const sx = Math.random() < 0.5 ? x : -x, sy = Math.random() < 0.5 ? y : -y;
-  return { q: `벡터 a = (${sx}, ${sy}) 의 크기 |a|를 구하세요.`, a: String(m) };
+  return { q: `벡터 a = (${sx}, ${sy}) 의 크기 |a|를 구하세요.`, a: String(m), svg: svgVectorArrow(sx, sy) };
 }
 
 // ---------- 고3 ----------
@@ -846,6 +1026,7 @@ const CURRICULUM = [
         { id: 'factors_multiples', label: '약수와 배수', gen: factorsMultiples },
         { id: 'average_basic', label: '평균 구하기', gen: averageBasic },
         { id: 'polygon_area', label: '다각형의 넓이', gen: polygonArea },
+        { id: 'congruent_shape_draw', label: '합동인 도형 그리기', gen: congruentShapeDraw },
       ] },
       { id: 'e6', label: '초등학교 6학년', topics: [
         { id: 'fraction_div', label: '분수의 나눗셈', gen: fractionDiv },
@@ -853,6 +1034,7 @@ const CURRICULUM = [
         { id: 'ratio', label: '비와 비율', gen: ratioProblem },
         { id: 'proportion_eq', label: '비례식', gen: proportionEq },
         { id: 'volume_box', label: '직육면체의 부피', gen: volumeBox },
+        { id: 'box_surface_area', label: '직육면체의 겉넓이', gen: boxSurfaceArea },
       ] },
     ],
   },
