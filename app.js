@@ -329,13 +329,14 @@ function renderWorksheet(problems, titleText, metaText, answerTitleText, groupLa
   problemList.innerHTML = pages
     .map((pageProblems, pIdx) => {
       const isLast = pIdx === pages.length - 1;
+      const rows = Math.ceil(pageProblems.length / 2);
       const items = pageProblems
         .map((p, i) => renderProblemHtml(p, pIdx * pageSize + i + 1))
         .join('');
       return `
-        <div class="sheet page-block${isLast ? '' : ' page-break'}">
+        <div class="page-sheet page-block${isLast ? '' : ' page-break'}">
           ${pageHeaderHtml(titleText, metaText)}
-          <div class="problem-grid">${items}</div>
+          <div class="problem-grid" style="grid-template-rows: repeat(${rows}, 1fr);">${items}</div>
           <div class="page-footer">${pIdx + 1} / ${totalPages}</div>
         </div>`;
     })

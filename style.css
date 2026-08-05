@@ -169,17 +169,26 @@ body.exam-mode .exam-only { display: inline; }
   box-shadow: 0 1px 3px rgba(20, 20, 43, 0.04);
 }
 
-.cover-page {
-  position: relative;
-  overflow: hidden;
-  min-height: 620px;
+.page-sheet {
+  width: min(100%, 720px);
+  aspect-ratio: 210 / 297;
+  margin: 0 auto;
+  border: 2px solid var(--text);
+  border-radius: 4px;
+  background: var(--card-bg);
+  box-shadow: 0 1px 3px rgba(20, 20, 43, 0.04);
   display: flex;
   flex-direction: column;
+  overflow: hidden;
+}
+
+.cover-page {
+  position: relative;
   align-items: center;
   justify-content: center;
   text-align: center;
   gap: 6px;
-  padding: 64px 32px;
+  padding: 48px 32px;
 }
 .cover-band { position: absolute; top: 0; left: 0; right: 0; height: 14px; background: var(--accent); }
 .cover-badge {
@@ -220,43 +229,60 @@ body.exam-mode .exam-only { display: inline; }
 
 #problemList { display: flex; flex-direction: column; gap: 24px; }
 
-.page-block { display: flex; flex-direction: column; }
+.page-block { padding: 20px; }
 
 .page-header {
-  border-bottom: 2px solid var(--text);
-  padding-bottom: 16px;
-  margin-bottom: 24px;
+  background: var(--accent);
+  color: #fff;
+  border-radius: 6px;
+  padding: 16px 20px;
+  margin-bottom: 16px;
+  flex-shrink: 0;
 }
-.page-header h2 { margin: 0 0 10px; font-size: 20px; color: var(--accent-dark); }
-.page-header-meta { color: var(--text-muted); font-size: 13px; margin-bottom: 12px; }
-.page-header-student { display: flex; gap: 20px; font-size: 14px; flex-wrap: wrap; }
+.page-header h2 { margin: 0 0 8px; font-size: 18px; color: #fff; }
+.page-header-meta { color: rgba(255, 255, 255, 0.88); font-size: 12px; margin-bottom: 10px; }
+.page-header-student { display: flex; gap: 16px; font-size: 12.5px; flex-wrap: wrap; color: #fff; }
 
 .page-footer {
-  margin-top: 24px;
-  padding-top: 12px;
-  border-top: 1px solid var(--border);
+  margin-top: 12px;
+  padding-top: 8px;
   text-align: center;
-  font-size: 12px;
+  font-size: 11px;
   color: var(--text-muted);
+  flex-shrink: 0;
 }
 
 .problem-grid {
+  position: relative;
+  flex: 1;
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 30px 32px;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px 22px;
+  min-height: 0;
+}
+.problem-grid::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 4px;
+  bottom: 4px;
+  width: 1px;
+  background: var(--border);
 }
 
 .problem {
   display: flex;
+  align-items: flex-start;
   gap: 8px;
-  font-size: 15px;
-  padding: 16px 4px;
-  border-bottom: 1px dotted var(--border);
+  font-size: 13.5px;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
 }
-.problem .num { font-weight: 700; color: var(--accent-dark); min-width: 22px; display: inline-flex; align-items: center; gap: 6px; }
-.qtext { flex: 1; line-height: 1.7; }
+.problem .num { font-weight: 700; color: var(--accent-dark); min-width: 20px; display: inline-flex; align-items: center; gap: 5px; }
+.qtext { flex: 1; line-height: 1.5; }
 
-.qblock { flex: 1; display: flex; flex-direction: column; gap: 10px; }
+.qblock { flex: 1; align-self: stretch; display: flex; flex-direction: column; gap: 10px; }
 
 .diff-badge {
   font-size: 11px;
@@ -269,16 +295,17 @@ body.exam-mode .exam-only { display: inline; }
 .diff-badge.diff-medium { background: #3b82f6; }
 .diff-badge.diff-hard { background: #ef4444; }
 
-.diagram-wrap { display: flex; justify-content: center; padding: 4px 0; color: var(--text); }
-.diagram-wrap svg.prob-diagram { max-width: 110px; height: auto; }
+.diagram-wrap { display: flex; justify-content: center; padding: 2px 0; color: var(--text); }
+.diagram-wrap svg.prob-diagram { max-width: 80px; height: auto; }
 
-.choices { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 0.95em; }
+.choices { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 0.88em; }
 .choice { white-space: nowrap; }
 
-.essay-tag { font-size: 12px; color: var(--text-muted); font-weight: 400; margin-left: 4px; }
+.essay-tag { font-size: 10.5px; color: var(--text-muted); font-weight: 400; margin-left: 4px; }
 .essay-lines {
-  height: 82px;
-  background-image: repeating-linear-gradient(to bottom, transparent, transparent 26px, var(--border) 27px);
+  flex: 1;
+  min-height: 30px;
+  background-image: repeating-linear-gradient(to bottom, transparent, transparent 18px, var(--border) 19px);
 }
 
 .type-ratio-row { display: flex; gap: 20px; flex-wrap: wrap; font-size: 14px; align-items: center; }
@@ -339,13 +366,13 @@ body.show-answers-preview .answer-sheet { display: block; }
   .empty-state { display: none !important; }
   .worksheet-section { gap: 0; }
   #problemList { gap: 0; }
-  .cover-page { page-break-after: always; min-height: 90vh; }
+  .page-sheet { width: 100%; border-width: 1.5px; }
+  .cover-page { page-break-after: always; }
   .answer-sheet {
     display: block;
     page-break-before: always;
   }
   body:not(.include-answers) .answer-sheet { display: none !important; }
-  .problem-grid { grid-template-columns: repeat(2, 1fr); }
   .problem { break-inside: avoid; }
   .page-block.page-break { page-break-after: always; }
   body.font-large .problem-grid,
