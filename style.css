@@ -292,9 +292,9 @@ body.exam-mode .exam-only-cell { display: table-cell; }
   border-radius: 6px;
 }
 .problem .num { font-weight: 700; color: var(--accent-dark); min-width: 20px; display: inline-flex; align-items: center; gap: 5px; }
-.qtext { flex: 1; line-height: 1.5; }
+.qtext { line-height: 1.5; }
 
-.qblock { flex: 1; align-self: stretch; display: flex; flex-direction: column; gap: 10px; }
+.qblock { flex: 1; align-self: stretch; display: flex; flex-direction: column; gap: 10px; justify-content: center; }
 
 .diff-badge {
   font-size: 8px;
