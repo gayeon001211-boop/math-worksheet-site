@@ -296,7 +296,16 @@ body.exam-mode .exam-only { display: inline; }
 .diff-badge.diff-hard { background: #ef4444; }
 
 .diagram-wrap { display: flex; justify-content: center; padding: 2px 0; color: var(--text); }
-.diagram-wrap svg.prob-diagram { max-width: 80px; height: auto; }
+.diagram-wrap svg.prob-diagram { max-width: 92px; height: auto; }
+
+.prob-table { border-collapse: collapse; font-size: 11px; margin: 0 auto; }
+.prob-table th, .prob-table td {
+  border: 1px solid var(--border);
+  padding: 3px 8px;
+  text-align: center;
+  white-space: nowrap;
+}
+.prob-table th { background: var(--accent-bg); color: var(--accent-dark); font-weight: 700; }
 
 .choices { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 0.88em; }
 .choice { white-space: nowrap; }

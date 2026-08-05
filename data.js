@@ -96,6 +96,117 @@ function svgCoordPlane(x, y) {
   return svgWrap(inner, 100, 100);
 }
 
+// ---------- function graphs (schematic) ----------
+function makeMapper(xMin, xMax, yMin, yMax, w, h, pad) {
+  const sx = (w - 2 * pad) / (xMax - xMin || 1);
+  const sy = (h - 2 * pad) / (yMax - yMin || 1);
+  return {
+    toSX: (x) => pad + (x - xMin) * sx,
+    toSY: (y) => h - pad - (y - yMin) * sy,
+  };
+}
+function buildCurvePath(f, xMin, xMax, toSX, toSY, steps) {
+  let d = '';
+  for (let i = 0; i <= steps; i++) {
+    const x = xMin + ((xMax - xMin) * i) / steps;
+    const cmd = i === 0 ? 'M' : 'L';
+    d += `${cmd}${toSX(x).toFixed(1)},${toSY(f(x)).toFixed(1)} `;
+  }
+  return d;
+}
+function axesSvg(xMin, xMax, yMin, yMax, toSX, toSY, pad, w, h) {
+  const zx = Math.max(pad, Math.min(w - pad, toSX(0)));
+  const zy = Math.max(pad, Math.min(h - pad, toSY(0)));
+  return `
+    <line x1="${pad}" y1="${zy}" x2="${w - pad}" y2="${zy}" stroke="currentColor" stroke-width="1" opacity="0.45"/>
+    <line x1="${zx}" y1="${pad}" x2="${zx}" y2="${h - pad}" stroke="currentColor" stroke-width="1" opacity="0.45"/>
+  `;
+}
+function svgQuadraticGraph(a, b, c, markX) {
+  const f = (x) => a * x * x + b * x + c;
+  const x0 = -b / (2 * a);
+  let xMin = Math.min(x0, markX, 0) - 2, xMax = Math.max(x0, markX, 0) + 2;
+  const samples = Array.from({ length: 21 }, (_, i) => f(xMin + ((xMax - xMin) * i) / 20));
+  samples.push(f(markX), 0);
+  let yMin = Math.min(...samples), yMax = Math.max(...samples);
+  if (yMax - yMin < 4) { yMin -= 2; yMax += 2; }
+  const w = 120, h = 110, pad = 14;
+  const { toSX, toSY } = makeMapper(xMin, xMax, yMin, yMax, w, h, pad);
+  const path = buildCurvePath(f, xMin, xMax, toSX, toSY, 30);
+  const mx = toSX(markX), my = toSY(f(markX));
+  const inner = `
+    ${axesSvg(xMin, xMax, yMin, yMax, toSX, toSY, pad, w, h)}
+    <path d="${path}" fill="none" stroke="currentColor" stroke-width="1.8"/>
+    <circle cx="${mx.toFixed(1)}" cy="${my.toFixed(1)}" r="2.6" fill="currentColor"/>
+  `;
+  return svgWrap(inner, w, h);
+}
+function svgTangentGraph(a, b, c, d, tx) {
+  const f = (x) => a * x ** 3 + b * x * x + c * x + d;
+  const fp = (x) => 3 * a * x * x + 2 * b * x + c;
+  const slope = fp(tx), y0 = f(tx);
+  const tangentF = (x) => slope * (x - tx) + y0;
+  let xMin = Math.min(tx, 0) - 2.5, xMax = Math.max(tx, 0) + 2.5;
+  const samples = [];
+  for (let i = 0; i <= 20; i++) samples.push(f(xMin + ((xMax - xMin) * i) / 20));
+  samples.push(y0, 0);
+  let yMin = Math.min(...samples), yMax = Math.max(...samples);
+  if (yMax - yMin < 4) { yMin -= 2; yMax += 2; }
+  const w = 120, h = 110, pad = 14;
+  const { toSX, toSY } = makeMapper(xMin, xMax, yMin, yMax, w, h, pad);
+  const curvePath = buildCurvePath(f, xMin, xMax, toSX, toSY, 30);
+  const tanPath = `M${toSX(xMin).toFixed(1)},${toSY(tangentF(xMin)).toFixed(1)} L${toSX(xMax).toFixed(1)},${toSY(tangentF(xMax)).toFixed(1)}`;
+  const inner = `
+    ${axesSvg(xMin, xMax, yMin, yMax, toSX, toSY, pad, w, h)}
+    <path d="${curvePath}" fill="none" stroke="currentColor" stroke-width="1.8"/>
+    <path d="${tanPath}" stroke="currentColor" stroke-width="1.2" stroke-dasharray="3,2" opacity="0.85"/>
+    <circle cx="${toSX(tx).toFixed(1)}" cy="${toSY(y0).toFixed(1)}" r="2.6" fill="currentColor"/>
+  `;
+  return svgWrap(inner, w, h);
+}
+function svgAreaGraph(a, n, lo, hi) {
+  const f = (x) => a * Math.pow(x, n);
+  const xMin = Math.min(lo, 0) - 0.5, xMax = Math.max(hi, 0) + 0.5;
+  const samples = [];
+  for (let i = 0; i <= 20; i++) samples.push(f(xMin + ((xMax - xMin) * i) / 20));
+  let yMin = Math.min(...samples, 0), yMax = Math.max(...samples, 0);
+  if (yMax - yMin < 2) yMax += 2;
+  const w = 120, h = 110, pad = 14;
+  const { toSX, toSY } = makeMapper(xMin, xMax, yMin, yMax, w, h, pad);
+  const curvePath = buildCurvePath(f, xMin, xMax, toSX, toSY, 30);
+  let shadeD = `M${toSX(lo).toFixed(1)},${toSY(0).toFixed(1)} `;
+  for (let i = 0; i <= 16; i++) {
+    const x = lo + ((hi - lo) * i) / 16;
+    shadeD += `L${toSX(x).toFixed(1)},${toSY(f(x)).toFixed(1)} `;
+  }
+  shadeD += `L${toSX(hi).toFixed(1)},${toSY(0).toFixed(1)} Z`;
+  const inner = `
+    ${axesSvg(xMin, xMax, yMin, yMax, toSX, toSY, pad, w, h)}
+    <path d="${shadeD}" fill="currentColor" opacity="0.15"/>
+    <path d="${curvePath}" fill="none" stroke="currentColor" stroke-width="1.8"/>
+  `;
+  return svgWrap(inner, w, h);
+}
+function svgUnitCircleAngle(deg) {
+  const rad = (deg * Math.PI) / 180;
+  const r = 32, cx = 52, cy = 52;
+  const px = cx + r * Math.cos(rad), py = cy - r * Math.sin(rad);
+  const inner = `
+    <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="currentColor" stroke-width="1.3"/>
+    <line x1="${cx - r - 6}" y1="${cy}" x2="${cx + r + 6}" y2="${cy}" stroke="currentColor" stroke-width="1" opacity="0.6"/>
+    <line x1="${cx}" y1="${cy - r - 6}" x2="${cx}" y2="${cy + r + 6}" stroke="currentColor" stroke-width="1" opacity="0.6"/>
+    <line x1="${cx}" y1="${cy}" x2="${px.toFixed(1)}" y2="${py.toFixed(1)}" stroke="currentColor" stroke-width="1.6"/>
+    <line x1="${px.toFixed(1)}" y1="${py.toFixed(1)}" x2="${px.toFixed(1)}" y2="${cy}" stroke="currentColor" stroke-width="1" stroke-dasharray="2,2"/>
+    <text x="${cx + r - 4}" y="${cy + 16}" font-size="9">${deg}°</text>
+  `;
+  return svgWrap(inner, 104, 104);
+}
+function htmlDataTable(headers, rows) {
+  const thead = `<tr>${headers.map((h) => `<th>${h}</th>`).join('')}</tr>`;
+  const tbody = rows.map((r) => `<tr>${r.map((cell) => `<td>${cell}</td>`).join('')}</tr>`).join('');
+  return `<table class="prob-table"><thead>${thead}</thead><tbody>${tbody}</tbody></table>`;
+}
+
 // ---------- grade 1 (초1) ----------
 function addSub1Digit(diff) {
   let a = randInt(0, 9), b = randInt(0, 9);
@@ -440,7 +551,23 @@ function quadraticIneq(diff) {
 function functionEval(diff) {
   const a = randInt(-5, 5) || 1, b = randInt(-5, 5), c = randInt(-5, 5);
   const x = randInt(-5, 5);
-  return { q: `f(x) = ${a}x² ${sgnTerm(b)}x ${sgnTerm(c)} 일 때 f(${x})의 값을 구하세요.`, a: String(a * x * x + b * x + c) };
+  return { q: `f(x) = ${a}x² ${sgnTerm(b)}x ${sgnTerm(c)} 일 때 f(${x})의 값을 구하세요.`, a: String(a * x * x + b * x + c), svg: svgQuadraticGraph(a, b, c, x) };
+}
+function quadraticMinMax(diff) {
+  const a = randChoice([1, -1, 2, -2]);
+  const h = randInt(-3, 3), k = randInt(-5, 5);
+  const b = -2 * a * h, c = a * h * h + k;
+  const span = diff === 'easy' ? [2, 3] : diff === 'medium' ? [2, 4] : [3, 5];
+  const lo = h - randInt(span[0], span[1]), hi = h + randInt(span[0], span[1]);
+  const f = (x) => a * x * x + b * x + c;
+  const fLo = f(lo), fHi = f(hi);
+  const maxV = a > 0 ? Math.max(fLo, fHi) : k;
+  const minV = a > 0 ? k : Math.min(fLo, fHi);
+  return {
+    q: `${lo} ≤ x ≤ ${hi} 에서 함수 f(x) = ${a}x² ${sgnTerm(b)}x ${sgnTerm(c)} 의 최댓값과 최솟값의 합을 구하세요.`,
+    a: String(maxV + minV),
+    svg: svgQuadraticGraph(a, b, c, h),
+  };
 }
 function remainderTheorem(diff) {
   const a = randInt(1, diff === 'easy' ? 3 : 5), b = randInt(-5, 5), c = randInt(-5, 5);
@@ -476,7 +603,7 @@ function trig(diff) {
   };
   const angle = randChoice([0, 30, 45, 60, 90]);
   const fn = randChoice(['sin', 'cos', 'tan']);
-  return { q: `${fn} ${angle}° 의 값을 구하세요.`, a: table[angle][fn] };
+  return { q: `${fn} ${angle}° 의 값을 구하세요.`, a: table[angle][fn], svg: svgUnitCircleAngle(angle) };
 }
 function sequence(diff) {
   if (Math.random() < 0.5) {
@@ -502,8 +629,21 @@ function vectorMagnitude(diff) {
 
 // ---------- 고3 ----------
 function derivative(diff) {
-  const a = randInt(1, 5), n = randInt(2, diff === 'easy' ? 3 : 4), b = randInt(-5, 5);
-  return { q: `f(x) = ${a}x^${n} ${sgnTerm(b)}x 일 때 f'(x)를 구하세요.`, a: `${a * n}x^${n - 1} ${sgnTerm(b)}` };
+  if (diff === 'easy') {
+    const a = randInt(1, 5), n = randInt(2, 3), b = randInt(-5, 5);
+    return { q: `f(x) = ${a}x^${n} ${sgnTerm(b)}x 일 때 f'(x)를 구하세요.`, a: `${a * n}x^${n - 1} ${sgnTerm(b)}` };
+  }
+  // 중/상: 극값 조건 두 개를 연립해서 미지의 두 계수를 구하는 실전형 문제
+  const p = randInt(-2, 2) || 1;
+  const trueA = randInt(-3, 3), trueB = -3 * p * p - 2 * trueA * p;
+  const c = randInt(-5, 5);
+  const givenV = p ** 3 + trueA * p * p + trueB * p + c;
+  const cTerm = c === 0 ? '' : ` ${sgnTerm(c)}`;
+  return {
+    q: `삼차함수 f(x) = x³ + ax² + bx${cTerm} 가 x = ${p} 에서 극값 ${givenV}를 가질 때, 상수 a, b에 대하여 a+b의 값을 구하세요.`,
+    a: String(trueA + trueB),
+    svg: svgTangentGraph(1, trueA, trueB, c, p),
+  };
 }
 function integralProblem(diff) {
   const a = randInt(1, 5), n = randInt(1, diff === 'easy' ? 3 : 4);
@@ -512,15 +652,34 @@ function integralProblem(diff) {
   return { q: `∫ ${a}x^${n} dx 를 구하세요. (적분상수 C)`, a: `${coef} x^${n + 1} + C` };
 }
 function probStats(diff) {
-  if (Math.random() < 0.5) {
+  const branch = Math.random();
+  if (branch < 0.4) {
     const n = randInt(diff === 'easy' ? 3 : 4, diff === 'easy' ? 5 : 7);
     const r = randInt(2, n);
     const fact = (k) => { let f = 1; for (let i = 2; i <= k; i++) f *= i; return f; };
     return { q: `서로 다른 ${n}개 중 ${r}개를 택하여 일렬로 나열하는 경우의 수를 구하세요.`, a: String(fact(n) / fact(n - r)) };
   }
-  const nums = Array.from({ length: 5 }, () => randInt(1, 10));
-  const mean = Number((nums.reduce((s, v) => s + v, 0) / nums.length).toFixed(2));
-  return { q: `다음 자료의 평균을 구하세요: ${nums.join(', ')}`, a: String(mean) };
+  if (branch < 0.7) {
+    const nums = Array.from({ length: 5 }, () => randInt(1, 10));
+    const mean = Number((nums.reduce((s, v) => s + v, 0) / nums.length).toFixed(2));
+    return { q: `다음 자료의 평균을 구하세요: ${nums.join(', ')}`, a: String(mean) };
+  }
+  // 도수분포표를 이용한 평균 계산 (계급값 사용)
+  const width = 10;
+  const start = randInt(0, 3) * width;
+  const classes = Array.from({ length: 4 }, (_, i) => [start + i * width, start + (i + 1) * width]);
+  const freqs = classes.map(() => randInt(2, 8));
+  const total = freqs.reduce((s, v) => s + v, 0);
+  const mids = classes.map(([lo, hi]) => (lo + hi) / 2);
+  const sum = mids.reduce((s, m, i) => s + m * freqs[i], 0);
+  const mean = sum / total;
+  const rows = classes.map(([lo, hi], i) => [`${lo} 이상 ${hi} 미만`, String(freqs[i])]);
+  rows.push(['합계', String(total)]);
+  return {
+    q: `다음은 어떤 자료를 계급의 크기가 ${width}인 도수분포표로 나타낸 것입니다. 이 자료의 평균을 계급값을 이용하여 구하세요.`,
+    a: Number.isInteger(mean) ? String(mean) : mean.toFixed(2),
+    svg: htmlDataTable(['계급', '도수'], rows),
+  };
 }
 function limitBasic(diff) {
   const a = randInt(1, 5), b = randInt(-5, 5), x = randInt(-5, 5);
@@ -531,7 +690,11 @@ function definiteIntegral(diff) {
   const lo = randInt(0, 2), hi = lo + randInt(1, diff === 'easy' ? 2 : 4);
   const antiAt = (x) => (a / (n + 1)) * Math.pow(x, n + 1);
   const val = Number((antiAt(hi) - antiAt(lo)).toFixed(2));
-  return { q: `∫ (${lo}부터 ${hi}까지) ${a}x^${n} dx 의 값을 구하세요.`, a: String(val) };
+  return {
+    q: `곡선 y = ${a}x^${n} 과 x축, 두 직선 x=${lo}, x=${hi}로 둘러싸인 부분의 넓이를 구하세요.`,
+    a: String(val),
+    svg: svgAreaGraph(a, n, lo, hi),
+  };
 }
 
 // ---------- curriculum tree ----------
@@ -615,6 +778,7 @@ const CURRICULUM = [
         { id: 'function_eval', label: '함수의 값', gen: functionEval },
         { id: 'remainder_theorem', label: '나머지정리', gen: remainderTheorem },
         { id: 'set_ops', label: '집합의 연산', gen: setOps },
+        { id: 'quadratic_minmax', label: '이차함수의 최댓값과 최솟값', gen: quadraticMinMax },
       ] },
       { id: 'h2', label: '고등학교 2학년', topics: [
         { id: 'exponent_log', label: '지수와 로그', gen: exponentLog },
