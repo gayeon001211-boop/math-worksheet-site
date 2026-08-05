@@ -114,12 +114,27 @@ function buildCurvePath(f, xMin, xMax, toSX, toSY, steps) {
   }
   return d;
 }
-function axesSvg(xMin, xMax, yMin, yMax, toSX, toSY, pad, w, h) {
-  const zx = Math.max(pad, Math.min(w - pad, toSX(0)));
-  const zy = Math.max(pad, Math.min(h - pad, toSY(0)));
+function axisZero(toSX, toSY, pad, w, h) {
+  return {
+    zx: Math.max(pad, Math.min(w - pad, toSX(0))),
+    zy: Math.max(pad, Math.min(h - pad, toSY(0))),
+  };
+}
+function axesSvg(zx, zy, pad, w, h) {
   return `
     <line x1="${pad}" y1="${zy}" x2="${w - pad}" y2="${zy}" stroke="currentColor" stroke-width="1" opacity="0.45"/>
     <line x1="${zx}" y1="${pad}" x2="${zx}" y2="${h - pad}" stroke="currentColor" stroke-width="1" opacity="0.45"/>
+    <text x="${zx - 8}" y="${zy + 10}" font-size="8" opacity="0.7">O</text>
+  `;
+}
+// Dashed guide from a curve point down to the x-axis, with the dot and its x-value labeled.
+function markPoint(px, py, zy, label) {
+  const belowRoom = zy < 92;
+  const ty = belowRoom ? zy + 10 : zy - 5;
+  return `
+    <line x1="${px.toFixed(1)}" y1="${py.toFixed(1)}" x2="${px.toFixed(1)}" y2="${zy.toFixed(1)}" stroke="currentColor" stroke-width="1" stroke-dasharray="2,2" opacity="0.7"/>
+    <circle cx="${px.toFixed(1)}" cy="${py.toFixed(1)}" r="2.6" fill="currentColor"/>
+    <text x="${px.toFixed(1)}" y="${ty.toFixed(1)}" font-size="9" text-anchor="middle">${label}</text>
   `;
 }
 function svgQuadraticGraph(a, b, c, markX) {
@@ -130,14 +145,15 @@ function svgQuadraticGraph(a, b, c, markX) {
   samples.push(f(markX), 0);
   let yMin = Math.min(...samples), yMax = Math.max(...samples);
   if (yMax - yMin < 4) { yMin -= 2; yMax += 2; }
-  const w = 120, h = 110, pad = 14;
+  const w = 120, h = 116, pad = 14;
   const { toSX, toSY } = makeMapper(xMin, xMax, yMin, yMax, w, h, pad);
+  const { zx, zy } = axisZero(toSX, toSY, pad, w, h);
   const path = buildCurvePath(f, xMin, xMax, toSX, toSY, 30);
   const mx = toSX(markX), my = toSY(f(markX));
   const inner = `
-    ${axesSvg(xMin, xMax, yMin, yMax, toSX, toSY, pad, w, h)}
+    ${axesSvg(zx, zy, pad, w, h)}
     <path d="${path}" fill="none" stroke="currentColor" stroke-width="1.8"/>
-    <circle cx="${mx.toFixed(1)}" cy="${my.toFixed(1)}" r="2.6" fill="currentColor"/>
+    ${markPoint(mx, my, zy, markX)}
   `;
   return svgWrap(inner, w, h);
 }
@@ -152,15 +168,16 @@ function svgTangentGraph(a, b, c, d, tx) {
   samples.push(y0, 0);
   let yMin = Math.min(...samples), yMax = Math.max(...samples);
   if (yMax - yMin < 4) { yMin -= 2; yMax += 2; }
-  const w = 120, h = 110, pad = 14;
+  const w = 120, h = 116, pad = 14;
   const { toSX, toSY } = makeMapper(xMin, xMax, yMin, yMax, w, h, pad);
+  const { zx, zy } = axisZero(toSX, toSY, pad, w, h);
   const curvePath = buildCurvePath(f, xMin, xMax, toSX, toSY, 30);
   const tanPath = `M${toSX(xMin).toFixed(1)},${toSY(tangentF(xMin)).toFixed(1)} L${toSX(xMax).toFixed(1)},${toSY(tangentF(xMax)).toFixed(1)}`;
   const inner = `
-    ${axesSvg(xMin, xMax, yMin, yMax, toSX, toSY, pad, w, h)}
+    ${axesSvg(zx, zy, pad, w, h)}
     <path d="${curvePath}" fill="none" stroke="currentColor" stroke-width="1.8"/>
     <path d="${tanPath}" stroke="currentColor" stroke-width="1.2" stroke-dasharray="3,2" opacity="0.85"/>
-    <circle cx="${toSX(tx).toFixed(1)}" cy="${toSY(y0).toFixed(1)}" r="2.6" fill="currentColor"/>
+    ${markPoint(toSX(tx), toSY(y0), zy, `x=${tx}`)}
   `;
   return svgWrap(inner, w, h);
 }
@@ -171,8 +188,9 @@ function svgAreaGraph(a, n, lo, hi) {
   for (let i = 0; i <= 20; i++) samples.push(f(xMin + ((xMax - xMin) * i) / 20));
   let yMin = Math.min(...samples, 0), yMax = Math.max(...samples, 0);
   if (yMax - yMin < 2) yMax += 2;
-  const w = 120, h = 110, pad = 14;
+  const w = 120, h = 116, pad = 14;
   const { toSX, toSY } = makeMapper(xMin, xMax, yMin, yMax, w, h, pad);
+  const { zx, zy } = axisZero(toSX, toSY, pad, w, h);
   const curvePath = buildCurvePath(f, xMin, xMax, toSX, toSY, 30);
   let shadeD = `M${toSX(lo).toFixed(1)},${toSY(0).toFixed(1)} `;
   for (let i = 0; i <= 16; i++) {
@@ -180,10 +198,16 @@ function svgAreaGraph(a, n, lo, hi) {
     shadeD += `L${toSX(x).toFixed(1)},${toSY(f(x)).toFixed(1)} `;
   }
   shadeD += `L${toSX(hi).toFixed(1)},${toSY(0).toFixed(1)} Z`;
+  const loLabel = lo === 0 ? '' : `<text x="${toSX(lo).toFixed(1)}" y="${(zy + 10).toFixed(1)}" font-size="9" text-anchor="middle">${lo}</text>`;
+  const hiLabel = `<text x="${toSX(hi).toFixed(1)}" y="${(zy + 10).toFixed(1)}" font-size="9" text-anchor="middle">${hi}</text>`;
   const inner = `
-    ${axesSvg(xMin, xMax, yMin, yMax, toSX, toSY, pad, w, h)}
+    ${axesSvg(zx, zy, pad, w, h)}
     <path d="${shadeD}" fill="currentColor" opacity="0.15"/>
     <path d="${curvePath}" fill="none" stroke="currentColor" stroke-width="1.8"/>
+    <line x1="${toSX(lo).toFixed(1)}" y1="${toSY(f(lo)).toFixed(1)}" x2="${toSX(lo).toFixed(1)}" y2="${zy.toFixed(1)}" stroke="currentColor" stroke-width="1" stroke-dasharray="2,2" opacity="0.6"/>
+    <line x1="${toSX(hi).toFixed(1)}" y1="${toSY(f(hi)).toFixed(1)}" x2="${toSX(hi).toFixed(1)}" y2="${zy.toFixed(1)}" stroke="currentColor" stroke-width="1" stroke-dasharray="2,2" opacity="0.6"/>
+    ${loLabel}
+    ${hiLabel}
   `;
   return svgWrap(inner, w, h);
 }
