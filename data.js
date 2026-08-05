@@ -687,6 +687,7 @@ function congruentShapeDraw(diff) {
     a: `왼쪽 도형과 크기와 모양이 같은 도형 (변의 길이·각의 크기가 모두 같도록)`,
     svg: svgWrap(inner, rightOffset + gridW, gridW),
     fixedType: 'subjective',
+    wideSvg: true,
   };
 }
 

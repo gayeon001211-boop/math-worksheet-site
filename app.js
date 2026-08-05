@@ -240,24 +240,33 @@ function assignTypes(problems) {
 const CHOICE_MARKS = ['①', '②', '③', '④', '⑤'];
 const DIFF_STARS = { easy: '★★☆☆☆', medium: '★★★☆☆', hard: '★★★★★' };
 
+const ANSWER_BLANK = '<span class="ans-blank">(　　　　　)</span>';
+const ANSWER_DOT_BLANK = '<span class="ans-blank">．．．．．．．．．．．．(　　)</span>';
+
 function renderProblemHtml(p, num) {
-  const cls = 'problem';
-  const diffBadge = p.diff ? `<span class="diff-badge diff-${p.diff}">${DIFF_STARS[p.diff]}</span>` : '';
-  const svgHtml = p.svg ? `<div class="diagram-wrap">${p.svg}</div>` : '';
+  const diffBadge = p.diff ? `<span class="diff-badge">${DIFF_STARS[p.diff]}</span> ` : '';
+  const svgHtml = p.svg ? `<div class="diagram-wrap${p.wideSvg ? ' block' : ''}">${p.svg}</div>` : '';
   const conditionHtml = p.condition ? `<div class="condition-box">${p.condition}</div>` : '';
 
   let qblockInner;
   if (p.type === 'choice') {
     const choicesHtml = p.choices.map((c, i) => `<span class="choice">${CHOICE_MARKS[i]} ${c}</span>`).join('');
-    qblockInner = `${conditionHtml}<span class="qtext">${p.q}</span>${svgHtml}<div class="choices">${choicesHtml}</div>`;
+    qblockInner = `${conditionHtml}${svgHtml}<span class="qtext">${p.q}${ANSWER_DOT_BLANK}</span><div class="choices">${choicesHtml}</div>`;
   } else if (p.type === 'essay') {
-    qblockInner = `${conditionHtml}<span class="qtext">${p.q} <span class="essay-tag">(풀이 과정과 답을 쓰세요)</span></span>${svgHtml}<div class="essay-lines"></div>`;
+    qblockInner = `${conditionHtml}${svgHtml}<span class="qtext">${p.q} <span class="essay-tag">(풀이 과정과 답을 쓰세요)</span></span><div class="essay-lines"></div>`;
   } else {
-    qblockInner = `${conditionHtml}<span class="qtext">${p.q}</span>${svgHtml}`;
+    qblockInner = `${conditionHtml}${svgHtml}<span class="qtext">${p.q}${ANSWER_BLANK}</span>`;
   }
-  const needsBlock = p.type !== 'subjective' || !!p.svg || !!p.condition;
-  const bodyHtml = needsBlock ? `<div class="qblock">${qblockInner}</div>` : `<span class="qtext">${p.q}</span>`;
-  return `<div class="${cls}"><span class="num">${diffBadge}${num}.</span>${bodyHtml}</div>`;
+  return `<div class="problem"><span class="num">${diffBadge}${num}.</span><div class="qblock">${qblockInner}</div></div>`;
+}
+
+// Splits one page's problems into two sequential columns (1..half, half+1..end),
+// matching the way a printed workbook fills the left column before the right.
+function twoColumnHtml(pageProblems, startNum) {
+  const half = Math.ceil(pageProblems.length / 2);
+  const col1 = pageProblems.slice(0, half).map((p, i) => renderProblemHtml(p, startNum + i)).join('');
+  const col2 = pageProblems.slice(half).map((p, i) => renderProblemHtml(p, startNum + half + i)).join('');
+  return `<div class="problem-grid"><div class="problem-col">${col1}</div><div class="problem-col">${col2}</div></div>`;
 }
 
 function buildSources(grade, gradeId, examMode, diff) {
@@ -336,14 +345,10 @@ function renderWorksheet(problems, titleText, metaText, answerTitleText, groupLa
   problemList.innerHTML = pages
     .map((pageProblems, pIdx) => {
       const isLast = pIdx === pages.length - 1;
-      const rows = Math.ceil(pageProblems.length / 2);
-      const items = pageProblems
-        .map((p, i) => renderProblemHtml(p, pIdx * pageSize + i + 1))
-        .join('');
       return `
         <div class="page-sheet page-block${isLast ? '' : ' page-break'}">
           ${pageHeaderHtml(titleText, metaText)}
-          <div class="problem-grid" style="grid-template-rows: repeat(${rows}, 1fr);">${items}</div>
+          ${twoColumnHtml(pageProblems, pIdx * pageSize + 1)}
           <div class="page-footer">${pIdx + 1} / ${totalPages}</div>
         </div>`;
     })
@@ -536,13 +541,11 @@ function onGenerateBatch() {
   problemList.innerHTML = allPages
     .map((pg, i) => {
       const isVeryLast = i === allPages.length - 1;
-      const rows = Math.ceil(pg.pageProblems.length / 2);
-      const items = pg.pageProblems.map((p, j) => renderProblemHtml(p, pg.idx * pageSize + j + 1)).join('');
       const metaText = `${pg.name} 학생  |  ${pg.idx + 1}/${pg.total}페이지`;
       return `
         <div class="page-sheet page-block${isVeryLast ? '' : ' page-break'}">
           ${pageHeaderHtml(currentTitleText, metaText, pg.name)}
-          <div class="problem-grid" style="grid-template-rows: repeat(${rows}, 1fr);">${items}</div>
+          ${twoColumnHtml(pg.pageProblems, pg.idx * pageSize + 1)}
           <div class="page-footer">${pg.idx + 1} / ${pg.total}</div>
         </div>`;
     })
@@ -600,7 +603,7 @@ function onSave() {
     meta: currentMetaText,
     answerTitle: answerGradeLabel.textContent,
     groupLabel: currentGroupLabel,
-    problems: currentProblems.map((p) => ({ q: p.q, a: p.a, type: p.type, choices: p.choices, correctIdx: p.correctIdx, svg: p.svg, diff: p.diff })),
+    problems: currentProblems.map((p) => ({ q: p.q, a: p.a, type: p.type, choices: p.choices, correctIdx: p.correctIdx, svg: p.svg, diff: p.diff, wideSvg: p.wideSvg })),
   };
   list.unshift(entry);
   if (list.length > 20) list.length = 20;
@@ -675,7 +678,7 @@ async function onShare() {
     meta: currentMetaText,
     answerTitle: answerGradeLabel.textContent,
     groupLabel: currentGroupLabel,
-    problems: currentProblems.map((p) => ({ q: p.q, a: p.a, type: p.type, choices: p.choices, correctIdx: p.correctIdx, svg: p.svg, diff: p.diff })),
+    problems: currentProblems.map((p) => ({ q: p.q, a: p.a, type: p.type, choices: p.choices, correctIdx: p.correctIdx, svg: p.svg, diff: p.diff, wideSvg: p.wideSvg })),
   };
   let encoded;
   try {
